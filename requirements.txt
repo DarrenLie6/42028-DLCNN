@@ -1,0 +1,38 @@
+# Core deep learning
+torch>=2.2.0
+torchvision>=0.17.0
+pytorch-lightning>=2.2.0
+torchmetrics>=1.3.0
+
+# Geospatial / image I/O
+rasterio>=1.3.9
+numpy>=1.26.0
+opencv-python>=4.9.0
+Pillow>=10.2.0
+albumentations>=1.4.0
+
+# Config & CLI
+omegaconf>=2.3.0
+PyYAML>=6.0
+hydra-core>=1.3.2
+rich>=13.7.0
+
+# Experiment tracking
+tensorboard>=2.16.0
+wandb>=0.16.0
+
+# Evaluation
+scikit-learn>=1.4.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# API & UI (Phase 4)
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+gradio>=4.20.0
+
+# Utilities
+tqdm>=4.66.0
+einops>=0.7.0
+timm>=0.9.16
