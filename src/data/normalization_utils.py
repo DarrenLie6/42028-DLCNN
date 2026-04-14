@@ -18,7 +18,7 @@ def load_optical(path: str | Path, tile_size: int = 512) -> np.ndarray:
     """Read pre event optical GeoTIFF (HxWx3 float32 in [0,1])"""
     path = Path(path)
     
-    # Return dummy data if file doesn't exist (for smoke tests)
+    # Return dummy data if file doesn't exist 
     if not path.exists():
         print(f"Warning: optical file not found {path}, returning dummy data")
         return np.zeros((tile_size, tile_size, 3), dtype=np.float32)

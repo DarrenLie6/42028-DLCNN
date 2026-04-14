@@ -1,10 +1,3 @@
-"""
-scripts/smoke_test.py
-────────────────────
-Full dataset integrity check + dataloader smoke test.
-Run from project root:
-    python -m scripts.smoke_test
-"""
 from __future__ import annotations
 
 import sys
@@ -21,7 +14,6 @@ from src.data.dataloader import get_dataloaders
 SAR_ONLY_EVENTS = {"ukraine-conflict", "myanmar-hurricane", "mexico-hurricane"}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 def check_missing_files(cfg) -> bool:
     root      = Path(cfg.data.root_dir)
     split_dir = Path(cfg.data.split_file_dir)
@@ -101,8 +93,6 @@ def check_missing_files(cfg) -> bool:
 
     return all_clean
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 def check_batch_shapes(loader, cfg):
     batch     = next(iter(loader))
     bs        = cfg.training.batch_size
@@ -136,7 +126,6 @@ def check_batch_shapes(loader, cfg):
     print(f"  label range   : [{lmin}, {lmax}]  (expected 0-4)  {status}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 def main():
     cfg = OmegaConf.load("configs/train_config.yaml")
 
