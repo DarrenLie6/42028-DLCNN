@@ -86,6 +86,15 @@ def _compute_tile_weughts(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
 
     return torch.tensor(weights, dtype=torch.float32)
 
+def collate_fn(batch):
+    return {
+        "optical": torch.stack([b["optical"]       for b in batch]),
+        "optical_valid": torch.stack([b["optical_valid"] for b in batch]),
+        "sar": torch.stack([b["sar"]           for b in batch]),
+        "label": torch.stack([b["label"]         for b in batch]),
+        "stem": [b["stem"]                      for b in batch],
+    }
+
 # Data Loader
 def get_dataloaders(cfg):
     """Returns train/val/test loaders"""

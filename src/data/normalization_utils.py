@@ -21,7 +21,7 @@ def load_optical(path: str | Path, tile_size: int = 512) -> np.ndarray:
     # Return dummy data if file doesn't exist (for smoke tests)
     if not path.exists():
         print(f"Warning: optical file not found {path}, returning dummy data")
-        return np.random.rand(tile_size, tile_size, 3).astype(np.float32)
+        return np.zeros((tile_size, tile_size, 3), dtype=np.float32)
     
     with rasterio.open(path) as src:
         img = src.read() #(C, H, W)
@@ -42,7 +42,7 @@ def load_sar(path: str | Path, tile_size: int = 512) -> np.ndarray:
     # Return dummy data if file doesn't exist (for smoke tests)
     if not path.exists():
         print(f"Warning: SAR file not found {path}, returning dummy data")
-        return np.random.rand(tile_size, tile_size, 1).astype(np.float32)
+        return np.zeros((tile_size, tile_size, 1), dtype=np.float32)
     
     with rasterio.open(path) as src:
         img = src.read(1).astype(np.float32) #(H,W)

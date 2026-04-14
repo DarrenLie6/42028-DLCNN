@@ -1,171 +1,177 @@
+"""
+scripts/smoke_test.py
+────────────────────
+Full dataset integrity check + dataloader smoke test.
+Run from project root:
+    python -m scripts.smoke_test
+"""
+from __future__ import annotations
+
+import sys
+from collections import defaultdict
 from pathlib import Path
+
+import torch
 from omegaconf import OmegaConf
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.data.dataloader import get_dataloaders
 
-def check_missing_files(cfg):
-    """
-    Identify missing files required for training and analyze their impact.
-    """
-    print("\n" + "=" * 80)
-    print("FILE INTEGRITY CHECK")
-    print("=" * 80)
-    
-    root_dir = Path(cfg.data.root_dir)
-    split_file_dir = Path(cfg.data.split_file_dir)
-    
-    missing_files = {
-        "train": [],
-        "val": [],
-        "test": []
+# Events where pre-event optical is intentionally absent
+SAR_ONLY_EVENTS = {"ukraine-conflict", "myanmar-hurricane", "mexico-hurricane"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+def check_missing_files(cfg) -> bool:
+    root      = Path(cfg.data.root_dir)
+    split_dir = Path(cfg.data.split_file_dir)
+    pre_dir   = root / cfg.data.pre_event_dir
+    post_dir  = root / cfg.data.post_event_dir
+    tgt_dir   = root / cfg.data.target_dir
+
+    all_clean = True
+
+    # Map split names to config keys
+    split_mapping = {
+        "train": "train_split",
+        "val":   "val_split",
+        "test":  "test_split"
     }
-    
-    missing_labels = {
-        "train": [],
-        "val": [],
-        "test": []
-    }
-    
-    # Check all split phases
-    split_files = {
-        "train": split_file_dir / cfg.data.train_split,
-        "val": split_file_dir / cfg.data.val_split,
-        "test": split_file_dir / cfg.data.test_split,
-    }
-    
-    total_stems = {}
-    
-    for phase, split_file in split_files.items():
+
+    for split, config_key in split_mapping.items():
+        split_file = split_dir / cfg.data[config_key]
         if not split_file.exists():
-            print(f"\  {phase.upper()} split file missing: {split_file}")
+            print(f"  WARNING: Split file not found: {split_file}")
+            all_clean = False
             continue
-        
-        with open(split_file) as f:
-            stems = [line.strip() for line in f if line.strip()]
-        
-        total_stems[phase] = len(stems)
-        
-        # Check for missing optical, SAR, and label files
+
+        stems = [s.strip() for s in split_file.read_text().splitlines() if s.strip()]
+
+        broken_opt, broken_sar, broken_lbl = [], [], []
+        sar_only_count = 0
+        event_sar_only = defaultdict(int)
+
         for stem in stems:
-            opt_path = root_dir / cfg.data.pre_event_dir / f"{stem}_pre_disaster.tif"
-            sar_path = root_dir / cfg.data.post_event_dir / f"{stem}_post_disaster.tif"
-            lbl_path = root_dir / cfg.data.target_dir / f"{stem}_building_damage.tif"
-            
-            if not opt_path.exists():
-                missing_files[phase].append((stem, "optical (pre-event)"))
-            if not sar_path.exists():
-                missing_files[phase].append((stem, "SAR (post-event)"))
-            if not lbl_path.exists():
-                missing_labels[phase].append(stem)
-    
-    # Print results
-    for phase in ["train", "val", "test"]:
-        if phase not in total_stems:
-            continue
-            
-        print(f"\n{phase.upper()} SET:")
-        print(f"  Total stems in split file: {total_stems[phase]}")
-        
-        if missing_files[phase]:
-            missing_count = len(set([stem for stem, _ in missing_files[phase]]))
-            print(f" Missing input files: {missing_count} stems")
-            for stem, file_type in sorted(set(missing_files[phase])):
-                print(f"     - {stem}: {file_type}")
+            parts = stem.rsplit("_", 1)
+            event = parts[0] if len(parts) == 2 else stem
+
+            opt_missing = not (pre_dir  / f"{stem}_pre_disaster.tif").exists()
+            sar_missing = not (post_dir / f"{stem}_post_disaster.tif").exists()
+            lbl_missing = not (tgt_dir  / f"{stem}_building_damage.tif").exists()
+
+            if opt_missing:
+                if event in SAR_ONLY_EVENTS:
+                    sar_only_count += 1
+                    event_sar_only[event] += 1
+                else:
+                    broken_opt.append(stem)
+
+            if sar_missing:
+                broken_sar.append(stem)
+
+            if lbl_missing:
+                broken_lbl.append(stem)
+
+        n_broken = len(broken_opt) + len(broken_sar) + len(broken_lbl)
+
+        print(f"\n{'='*60}")
+        print(f"{split.upper()} SET  ({len(stems)} tiles)")
+        print(f"{'='*60}")
+        print(f"  [OK] SAR-only tiles (by design) : {sar_only_count:>4}")
+        for evt, cnt in sorted(event_sar_only.items()):
+            print(f"       {evt:<35}: {cnt}")
+        print(f"  [!!] Broken optical             : {len(broken_opt):>4}")
+        print(f"  [!!] Broken SAR                 : {len(broken_sar):>4}")
+        print(f"  [!!] Broken labels              : {len(broken_lbl):>4}")
+
+        if n_broken == 0:
+            print(f"\n  >>> No genuinely broken files - ready!")
         else:
-            print(f"  ✓ All input files present (optical & SAR)")
-        
-        if missing_labels[phase]:
-            print(f"  Missing label files: {len(missing_labels[phase])} stems")
-            for stem in sorted(missing_labels[phase])[:5]:  # Show first 5
-                print(f"     - {stem}")
-            if len(missing_labels[phase]) > 5:
-                print(f"     ... and {len(missing_labels[phase]) - 5} more")
-        else:
-            print(f"  ✓ All label files present")
-    
-    # Analyze training impact
-    print("\n" + "=" * 80)
-    print("TRAINING IMPACT ANALYSIS")
-    print("=" * 80)
-    
-    if missing_files["train"] or missing_files["val"]:
-        print("\nCRITICAL: Missing input files will BREAK training!")
-        print("   - Optical and SAR images are REQUIRED for both training and validation")
-        print("   - Model cannot proceed without these input modalities")
-        print("   - Training will crash when processing affected batches")
-    else:
-        print("\n✓ Input files: No critical issues")
-    
-    if missing_labels["train"]:
-        train_affected = len(missing_labels["train"])
-        train_total = total_stems.get("train", 0)
-        train_pct = (train_affected / train_total * 100) if train_total > 0 else 0
-        print(f"\  TRAINING LABELS: {train_affected}/{train_total} stems missing labels ({train_pct:.1f}%)")
-        print("   - Missing labels will use zero-filled masks (all 'no damage')")
-        print("   - Impact: Reduces training signal; biased towards background class")
-        print("   - Recommendation: Regenerate or verify label files before serious training")
-    else:
-        print("\n✓ Training labels: All present")
-    
-    if missing_labels["val"]:
-        val_affected = len(missing_labels["val"])
-        val_total = total_stems.get("val", 0)
-        val_pct = (val_affected / val_total * 100) if val_total > 0 else 0
-        print(f"\  VALIDATION LABELS: {val_affected}/{val_total} stems missing labels ({val_pct:.1f}%)")
-        print("   - Validation metrics (IoU, F1, etc.) will be unreliable")
-        print("   - Training progress will be hard to assess")
-        print("   - Recommendation: Do not rely on validation metrics until fixed")
-    else:
-        print("\n✓ Validation labels: All present")
-    
-    if missing_labels["test"] and "test" in total_stems:
-        test_affected = len(missing_labels["test"])
-        test_total = total_stems.get("test", 0)
-        test_pct = (test_affected / test_total * 100) if test_total > 0 else 0
-        print(f"\  TEST LABELS: {test_affected}/{test_total} stems missing labels ({test_pct:.1f}%)")
-        print("   - Test set evaluation will be incomplete")
-    else:
-        if "test" in total_stems:
-            print("\n✓ Test labels: All present (or not critical)")
-    
-    print("=" * 80 + "\n")
+            all_clean = False
+            print(f"\n  CRITICAL: {n_broken} broken files found - fix before training!")
+            for label, items in [("Missing optical", broken_opt),
+                                  ("Missing SAR",     broken_sar),
+                                  ("Missing labels",  broken_lbl)]:
+                if items:
+                    print(f"     {label}:")
+                    for s in items[:5]:
+                        print(f"       - {s}")
+                    if len(items) > 5:
+                        print(f"       ... and {len(items)-5} more")
+
+    return all_clean
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+def check_batch_shapes(loader, cfg):
+    batch     = next(iter(loader))
+    bs        = cfg.training.batch_size
+    tile      = cfg.data.tile_size
+    n_valid   = int(batch["optical_valid"].sum().item())
+    n_missing = bs - n_valid
+
+    print(f"\nBatch shapes  (batch_size={bs}, tile={tile}):")
+    print(f"  optical       : {tuple(batch['optical'].shape)}"
+          f"   dtype={batch['optical'].dtype}")
+    print(f"  optical_valid : {tuple(batch['optical_valid'].shape)}"
+          f"  ->  {n_valid} real  /  {n_missing} SAR-only"
+          f"  dtype={batch['optical_valid'].dtype}")
+    print(f"  sar           : {tuple(batch['sar'].shape)}"
+          f"   dtype={batch['sar'].dtype}")
+    print(f"  label         : {tuple(batch['label'].shape)}"
+          f"   dtype={batch['label'].dtype}")
+
+    # Verify optical is zeroed where optical_valid=False
+    invalid_mask = ~batch["optical_valid"]
+    if invalid_mask.any():
+        invalid_idx  = invalid_mask.nonzero(as_tuple=True)[0]
+        optical_sums = batch["optical"][invalid_idx].abs().sum().item()
+        status = "OK" if optical_sums == 0.0 else f"WARNING non-zero sum={optical_sums:.4f}"
+        print(f"  optical zeros where invalid  : {status}")
+
+    # Verify label range
+    lmin = int(batch["label"].min().item())
+    lmax = int(batch["label"].max().item())
+    status = "OK" if 0 <= lmin and lmax <= 4 else "WARNING out of range!"
+    print(f"  label range   : [{lmin}, {lmax}]  (expected 0-4)  {status}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 def main():
     cfg = OmegaConf.load("configs/train_config.yaml")
-    
-    # Phase 0: Check for missing files
-    check_missing_files(cfg)
-    
-    # Phase 1: Load dataloaders
+
+    print("\n" + "="*60)
+    print("FILE INTEGRITY CHECK")
+    print("="*60)
+    clean = check_missing_files(cfg)
+
+    print("\n" + "="*60)
+    print("DATALOADER CHECK")
+    print("="*60)
     train_loader, val_loader, test_loader = get_dataloaders(cfg)
-    
-    # Print dataset sizes
-    print("=" * 80)
+
+    print("\n" + "="*60)
     print("DATASET SUMMARY")
-    print("=" * 80)
-    print(f"Train samples: {len(train_loader.dataset)}")
-    print(f"Val samples: {len(val_loader.dataset)}")
-    if test_loader is not None:
-        print(f"Test samples: {len(test_loader.dataset)}")
+    print("="*60)
+    print(f"Train samples : {len(train_loader.dataset)}")
+    print(f"Val   samples : {len(val_loader.dataset)}")
+    print(f"Test  samples : {len(test_loader.dataset)}")
+    print(f"\nTrain batches : {len(train_loader)}")
+    print(f"Val   batches : {len(val_loader)}")
+    print(f"Test  batches : {len(test_loader)}")
+
+    print("\n" + "="*60)
+    print("BATCH SHAPE VERIFICATION  (train loader)")
+    print("="*60)
+    check_batch_shapes(train_loader, cfg)
+
+    print("\n" + "="*60)
+    if clean:
+        print("Phase 1 complete - smoke test passed!")
     else:
-        print("Test samples: 0 (no test set)")
-    
-    print(f"\nBatch configuration:")
-    print(f"Train batches: {len(train_loader)}")
-    print(f"Val batches: {len(val_loader)}")
-    if test_loader is not None:
-        print(f"Test batches: {len(test_loader)}")
-    print("=" * 80)
-    
-    # Phase 2: Verify batch shapes
-    batch = next(iter(train_loader))
+        print("FAILED - fix broken files above before training.")
+    print("="*60 + "\n")
 
-    print(f"\nBatch shapes (batch_size={cfg.training.batch_size}):")
-    print(f"  optical: {batch['optical'].shape}")  # (8, 3, 512, 512)
-    print(f"  sar:     {batch['sar'].shape}")       # (8, 1, 512, 512)
-    print(f"  label:   {batch['label'].shape}")     # (8, 512, 512)
-    print("=" * 80)
-    print("✓ Smoke test complete - ready for training!")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
