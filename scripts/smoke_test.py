@@ -36,7 +36,7 @@ def check_missing_files(cfg):
     
     for phase, split_file in split_files.items():
         if not split_file.exists():
-            print(f"\n⚠️  {phase.upper()} split file missing: {split_file}")
+            print(f"\  {phase.upper()} split file missing: {split_file}")
             continue
         
         with open(split_file) as f:
@@ -67,14 +67,14 @@ def check_missing_files(cfg):
         
         if missing_files[phase]:
             missing_count = len(set([stem for stem, _ in missing_files[phase]]))
-            print(f"  ❌ Missing input files: {missing_count} stems")
+            print(f" Missing input files: {missing_count} stems")
             for stem, file_type in sorted(set(missing_files[phase])):
                 print(f"     - {stem}: {file_type}")
         else:
             print(f"  ✓ All input files present (optical & SAR)")
         
         if missing_labels[phase]:
-            print(f"  ⚠️  Missing label files: {len(missing_labels[phase])} stems")
+            print(f"  Missing label files: {len(missing_labels[phase])} stems")
             for stem in sorted(missing_labels[phase])[:5]:  # Show first 5
                 print(f"     - {stem}")
             if len(missing_labels[phase]) > 5:
@@ -88,7 +88,7 @@ def check_missing_files(cfg):
     print("=" * 80)
     
     if missing_files["train"] or missing_files["val"]:
-        print("\n❌ CRITICAL: Missing input files will BREAK training!")
+        print("\nCRITICAL: Missing input files will BREAK training!")
         print("   - Optical and SAR images are REQUIRED for both training and validation")
         print("   - Model cannot proceed without these input modalities")
         print("   - Training will crash when processing affected batches")
@@ -99,7 +99,7 @@ def check_missing_files(cfg):
         train_affected = len(missing_labels["train"])
         train_total = total_stems.get("train", 0)
         train_pct = (train_affected / train_total * 100) if train_total > 0 else 0
-        print(f"\n⚠️  TRAINING LABELS: {train_affected}/{train_total} stems missing labels ({train_pct:.1f}%)")
+        print(f"\  TRAINING LABELS: {train_affected}/{train_total} stems missing labels ({train_pct:.1f}%)")
         print("   - Missing labels will use zero-filled masks (all 'no damage')")
         print("   - Impact: Reduces training signal; biased towards background class")
         print("   - Recommendation: Regenerate or verify label files before serious training")
@@ -110,7 +110,7 @@ def check_missing_files(cfg):
         val_affected = len(missing_labels["val"])
         val_total = total_stems.get("val", 0)
         val_pct = (val_affected / val_total * 100) if val_total > 0 else 0
-        print(f"\n⚠️  VALIDATION LABELS: {val_affected}/{val_total} stems missing labels ({val_pct:.1f}%)")
+        print(f"\  VALIDATION LABELS: {val_affected}/{val_total} stems missing labels ({val_pct:.1f}%)")
         print("   - Validation metrics (IoU, F1, etc.) will be unreliable")
         print("   - Training progress will be hard to assess")
         print("   - Recommendation: Do not rely on validation metrics until fixed")
@@ -121,7 +121,7 @@ def check_missing_files(cfg):
         test_affected = len(missing_labels["test"])
         test_total = total_stems.get("test", 0)
         test_pct = (test_affected / test_total * 100) if test_total > 0 else 0
-        print(f"\n⚠️  TEST LABELS: {test_affected}/{test_total} stems missing labels ({test_pct:.1f}%)")
+        print(f"\  TEST LABELS: {test_affected}/{test_total} stems missing labels ({test_pct:.1f}%)")
         print("   - Test set evaluation will be incomplete")
     else:
         if "test" in total_stems:
