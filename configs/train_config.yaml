@@ -17,10 +17,10 @@ data:
   num_classes:     4
   tile_size:       512
 
-  optical_mean:    [91.19, 87.18, 78.86]
-  optical_std:     [52.42, 45.44, 41.69]
-  sar_mean:        [57.1922]
-  sar_std:         [37.6639]
+  optical_mean:    [0.358, 0.342, 0.309]
+  optical_std:     [0.206, 0.178, 0.163]
+  sar_mean:        [0.2243]
+  sar_std:         [0.1477]
 
   class_weights:       [0.1, 1.0, 3.0, 5.0]
   severe_damage_boost: 2.0

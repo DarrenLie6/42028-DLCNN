@@ -224,14 +224,16 @@ def eda_image_stats(all_stems):
     plt.close()
     print(f"\n   Saved → {OUT_DIR}/4_image_stats.png")
 
-    # Print recommended normalization values
+    # Print recommended normalization values (normalized to [0,1] range)
     print(f"\n   Recommended normalization values for train_config.yaml:")
-    opt_global_mean = opt_means.mean(axis=0).tolist()
-    opt_global_std  = opt_stds.mean(axis=0).tolist()
-    print(f"     optical_mean: {[round(v,2) for v in opt_global_mean]}")
-    print(f"     optical_std : {[round(v,2) for v in opt_global_std]}")
-    print(f"     sar_mean    : [{sar_means.mean():.4f}]")
-    print(f"     sar_std     : [{sar_stds.mean():.4f}]")
+    opt_global_mean = (opt_means.mean(axis=0) / 255.0).tolist()
+    opt_global_std  = (opt_stds.mean(axis=0) / 255.0).tolist()
+    sar_global_mean = (sar_means.mean() / 255.0)
+    sar_global_std  = (sar_stds.mean() / 255.0)
+    print(f"     optical_mean: {[round(v,3) for v in opt_global_mean]}")
+    print(f"     optical_std : {[round(v,3) for v in opt_global_std]}")
+    print(f"     sar_mean    : [{sar_global_mean:.4f}]")
+    print(f"     sar_std     : [{sar_global_std:.4f}]")
 
 
 # ── EDA 4: Sample visualisation ──────────────────────────────────────────────
