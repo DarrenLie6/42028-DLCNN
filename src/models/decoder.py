@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class DoubleConv(nn.Module):
     """UNet decoder
-        - unsampled features from previous decoder
+        - upsampled features from previous decoder
         - concat skip connection from both branches
         - Conv > BN > ReLU > Conv > Bn > ReLU
     """
