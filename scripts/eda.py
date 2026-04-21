@@ -24,8 +24,8 @@ TGT_DIR   = ROOT / cfg.data.target_dir
 OUT_DIR   = Path("reports/eda")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-LABEL_NAMES  = {0: "Background", 1: "Intact", 2: "Minor", 3: "Major", 4: "Destroyed"}
-LABEL_COLORS = {0: "#d3d3d3", 1: "#2ecc71", 2: "#f1c40f", 3: "#e67e22", 4: "#e74c3c"}
+LABEL_NAMES  = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
+LABEL_COLORS = {0: "#d3d3d3", 1: "#2ecc71", 2: "#e67e22", 3: "#e74c3c"}
 SAR_ONLY     = {"ukraine-conflict", "myanmar-hurricane", "mexico-hurricane"}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ def eda_label_distribution(all_stems):
 
     # ── Plot B: event stacked bar ────────────────────────────────────────────
     events  = sorted(event_pct.keys())
-    classes = [0, 1, 2, 3, 4]
+    classes = [0, 1, 2, 3]
     bottom  = np.zeros(len(events))
     for cls in classes:
         vals = [event_pct[e].get(cls, 0) for e in events]
@@ -294,7 +294,7 @@ def eda_sample_visualization(all_stems):
         axes[row, 2].axis("off")
 
     # Legend
-    patches = [mpatches.Patch(color=LABEL_COLORS[c], label=LABEL_NAMES[c]) for c in range(5)]
+    patches = [mpatches.Patch(color=LABEL_COLORS[c], label=LABEL_NAMES[c]) for c in range(4)]
     fig.legend(handles=patches, loc="lower center", ncol=5,
                bbox_to_anchor=(0.5, 0), fontsize=9)
     plt.suptitle("Sample Tiles: Pre-event Optical | Post-event SAR | Damage Label",

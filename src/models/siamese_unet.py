@@ -8,12 +8,12 @@ from .decoder import DecoderBlock, DoubleConv
 """Siamese UNet
     - dual encoder branches with ResNet50 weights
     - featurs fused by concatanation at each scale
-    - UNet decoder outputs 5 class segmentation map
+    - UNet decoder outputs 4 class segmentation map
 """
 
 class SiameseUNet(nn.Module):
     
-    def __init__(self, num_classes:int = 5, pretrained: bool = True):
+    def __init__(self, num_classes:int = 4, pretrained: bool = True):
         super().__init__()
         self.encoder = ResNetEncoder(pretrained=pretrained)
         
@@ -68,17 +68,11 @@ class SiameseUNet(nn.Module):
         skip2 = torch.cat([feats_opt[1], feats_sar[1]], dim=1)
         skip1 = torch.cat([feats_opt[0], feats_sar[0]], dim=1)
         
-        # x = self.dec4(x, skip4) #512ch, H/16
-        # x = self.dec3(x, skip3) #256ch, H/8
-        # x = self.dec2(x, skip2) #128ch, H/4
-        # x = self.dec1(x, skip1) #64ch, H/2
-        # x = self.final_upsample(x) #64ch, H
+        x = self.dec4(x, skip4) #512ch, H/16
+        x = self.dec3(x, skip3) #256ch, H/8
+        x = self.dec2(x, skip2) #128ch, H/4
+        x = self.dec1(x, skip1) #64ch, H/2
+        x = self.final_upsample(x) #64ch, H
         
-        print("bottleneck:", x.shape)
-        x = self.dec4(x, skip4); print("dec4:", x.shape)
-        x = self.dec3(x, skip3); print("dec3:", x.shape)
-        x = self.dec2(x, skip2); print("dec2:", x.shape)
-        x = self.dec1(x, skip1); print("dec1:", x.shape)
-        x = self.final_upsample(x); print("final_upsample:", x.shape)
                 
         return self.head(x)

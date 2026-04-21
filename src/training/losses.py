@@ -42,7 +42,7 @@ class CombinedLoss(nn.Module):
     
     def __init__(
         self,
-        num_classes: int = 5,
+        num_classes: int = 4,
         ignore_index: int = 0,
         ce_weights: float = 0.5,
         dice_weights: float = 0.5,
@@ -54,7 +54,7 @@ class CombinedLoss(nn.Module):
         self.dice_w = dice_weights
         
         if class_weights is None:
-            class_weights = [0.0, 1.0, 8.0, 12.0, 50.0]
+            class_weights = [0.0, 1.0, 7.8, 13.0]
         
         weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         self.ce = nn.CrossEntropyLoss(weight=weights, ignore_index=ignore_index)

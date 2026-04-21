@@ -1,0 +1,67 @@
+============================================================
+BRIGHT DATASET — EXPLORATORY DATA ANALYSIS
+============================================================
+
+[1/5] Tile counts per event...
+   Saved → reports\eda/1_tile_counts.png
+
+   Event                           Train    Val   Test   Total
+   -------------------------------------------------------
+   bata-explosion                     70     14     23     107
+   beirut-explosion                   89     17     27     133
+   congo-volcano                      81     15     27     123
+   haiti-earthquake                   48     10     15      73
+   hawaii-wildfire                    42      9     14      65
+   la_palma-volcano                  647     97    189     933
+   libya-flood                        83     15     26     124
+   marshall-wildfire                  51      8     18      77
+   mexico-hurricane                  145     20     47     212 [SAR-only]
+   morocco-earthquake                392     59    116     567
+   myanmar-hurricane                  85     13     28     126 [SAR-only]
+   noto-earthquake                    52      9     18      79
+   turkey-earthquake                 777    113    224    1114
+   ukraine-conflict                  356     51    106     513 [SAR-only]
+
+[2/5] Label class distribution...
+   Scanning labels: 100%|█████████| 4246/4246 [01:48<00:00, 39.18it/s]
+e:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\scripts\eda.py:137: UserWarning: set_ticklabels() should only be used with a fixed number of ticks, i.e. after set_ticks() or using a FixedLocator.
+  axes[1].set_xticklabels(events, rotation=45, ha="right", fontsize=8)
+   Saved → reports\eda/2_label_distribution.png
+   Saved → reports\eda/3_damage_density.png
+
+   Global class counts:
+   Class 0 (Background): 3,822,566,211  (85.9%)
+   Class 1 (Intact    ):  520,661,061  (11.7%)
+   Class 2 (Damaged   ):   67,230,252  (1.5%)
+   Class 3 (Destroyed ):   41,796,172  (0.9%)
+
+[3/5] Computing image statistics (sample of 500 tiles)...
+   Reading tiles: 100%|█████████████| 500/500 [00:24<00:00, 20.53it/s]
+
+   Optical (RGB) per-channel stats  [401 tiles]:
+     R: mean=91.19  std=52.42
+     G: mean=87.18  std=45.44
+     B: mean=78.86  std=41.69
+
+   SAR stats  [500 tiles]:
+     mean=57.1922  std=37.6639
+
+   Saved → reports\eda/4_image_stats.png
+
+   Recommended normalization values for train_config.yaml:
+     optical_mean: [0.358, 0.342, 0.309]
+     optical_std : [0.206, 0.178, 0.163]
+     sar_mean    : [0.2243]
+     sar_std     : [0.1477]
+
+[4/5] Generating sample tile visualizations...
+   Saved → reports\eda/5_sample_tiles.png
+
+[5/5] SAR-only event summary...
+   train:  586 / 2918 SAR-only tiles (20.1%)
+   val  :   84 / 450 SAR-only tiles (18.7%)
+   test :  181 / 878 SAR-only tiles (20.6%)
+
+============================================================
+EDA complete! All plots saved to: reports\eda/
+============================================================

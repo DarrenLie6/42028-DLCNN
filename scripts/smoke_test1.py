@@ -1,7 +1,7 @@
 from src.models import SiameseUNet
 import torch
 
-model = SiameseUNet(num_classes=5, pretrained=False)
+model = SiameseUNet(num_classes=4, pretrained=False)
 optical       = torch.randn(2, 3, 512, 512)
 sar           = torch.randn(2, 1, 512, 512)
 optical_valid = torch.tensor([True, False])
