@@ -7,7 +7,7 @@ class ResNetEncoder(nn.Module):
     """Resnet50 encoder - Shared ResNet50 encoder with seperate input stems
     """
     
-    def __intit__(self, pretrained: bool = True):
+    def __init__(self, pretrained: bool = True):
         super().__init__()
         backbone = resnet50(
             weights = ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
@@ -48,8 +48,8 @@ class ResNetEncoder(nn.Module):
         
         s1 = stem(x) #(B, 64, H/2, W/2) - before maxpooling 
         s2 = self.layer1(s1) #(B, 256, H/4, W/4)
-        s3 = self.layer1(s2) #(B, 512, H/8, W/8)
-        s4 = self.layer1(s3) #(B, 1024, H/16, W/16)
-        s5 = self.layer1(s5) #(B, 2048, H/32, W/32)
+        s3 = self.layer2(s2) #(B, 512, H/8, W/8)
+        s4 = self.layer3(s3) #(B, 1024, H/16, W/16)
+        s5 = self.layer4(s4) #(B, 2048, H/32, W/32)
         
         return [s1, s2, s3, s4, s5]

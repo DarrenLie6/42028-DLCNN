@@ -39,7 +39,8 @@ class DecoderBlock(nn.Module):
         x = self.upsample(x)
         # handles size mismatch from odd dimensions
         if x.shape[-2:] != skip.shape[-2:]:
-            x = F.interpolate(x, size=skip.shape[-2:], mode="binlinear", align_corners=False)
-            x = torch.cat([x, skip], dim=1)
+            skip = F.interpolate(skip, size=x.shape[-2:], mode="bilinear", align_corners=False)
             
-            return self.conv(x)
+        x = torch.cat([x, skip], dim=1)
+        
+        return self.conv(x)
