@@ -20,7 +20,7 @@ def load_optical(path: str | Path, tile_size: int = 512) -> np.ndarray:
     
     # Return dummy data if file doesn't exist 
     if not path.exists():
-        print(f"Warning: optical file not found {path}, returning dummy data")
+        # print(f"Warning: optical file not found {path}, returning dummy data")
         return np.zeros((tile_size, tile_size, 3), dtype=np.float32)
     
     with rasterio.open(path) as src:
