@@ -54,14 +54,14 @@ def build_pairs(cfg) -> None:
     print(f"[build_pairs] wrote {len(train_stems)} train / {len(val_stems)} val stems")
     
 # Weighted Sampler
-def _compute_tile_weughts(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
+def _compute_tile_weights(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
     """
     Assigns each tile a sampling weight proportional to its damaged pixel fraction. 
     Tiles with major/destroyed damage (4 classes) get a 2x boost.
     Replaces shuffle=True to combat severe class imbalance.
     """
     weights = []
-    damage_classes = set(range(1, cfg.data.num_classes))  # exclude background
+    damage_classes = {2, 3}  # exclude background
 
     for stem in dataset.stems:
         lbl_path = (dataset.root / cfg.data.target_dir / f"{stem}_building_damage.tif")
@@ -114,7 +114,7 @@ def get_dataloaders(cfg):
     )
     
     # compute train set weight
-    tiles_weights = _compute_tile_weughts(train_ds, cfg)
+    tiles_weights = _compute_tile_weights(train_ds, cfg)
     # pasing the tiles weights to WeightedRandomSampler
     sampler = WeightedRandomSampler(
         weights= tiles_weights,

@@ -21,7 +21,10 @@ class SiameseUNet(nn.Module):
         enc_ch = self.encoder.out_channels # [64, 256, 512, 1024, 2048]
         
         # bottleneck fusion: conacat pre + post > 2048*2
-        self.bottleneck_conv = DoubleConv(enc_ch[4] *  2, 1024)
+        self.bottleneck_conv = nn.Sequential(
+            DoubleConv(enc_ch[4] * 2, 1024),
+            nn.Dropout2d(p=0.3)
+            )
         
         # decoder blocks 
         # skp_ch  = pre channels + post channels 

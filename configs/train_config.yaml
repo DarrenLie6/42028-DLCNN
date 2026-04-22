@@ -21,6 +21,7 @@ augmentation:
   vertical_flip_p: 0.5
   rotate_90_p: 0.5
   random_brightness_contrast_p: 0.3
+  # gaussian_noise_p: 0.2 
   elastic_transform_p: 0.2
   coarse_dropout_p: 0.2
 
@@ -33,8 +34,8 @@ training:
   epochs: 50
   batch_size: 4
   num_workers:  4
-  learning_rate: 3.0e-5
+  learning_rate: 1.0e-4
   weight_decay: 1.0e-4
   min_lr: 1.0e-6
-  patience: 10
+  patience: 15
   checkpoint_dir: "checkpoints"

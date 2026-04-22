@@ -99,3 +99,29 @@ class SegmentationMetrics:
             f"SegmentationMetrics(num_classes={self.num_classes}, "
             f"ignore_index={self.ignore_index}, device={self.device})"
         )
+        
+    def compute(self) -> dict[str, float]:
+        cm  = self.conf_matrix.float()
+        tp  = cm.diag()
+        fp  = cm.sum(dim=0) - tp
+        fn  = cm.sum(dim=1) - tp
+        eps = 1e-7
+
+        iou = tp / (tp + fp + fn + eps)
+        f1  = (2 * tp) / (2 * tp + fp + fn + eps)
+        
+        # Per-class accuracy = TP / (TP + FN) = true positive rate
+        acc = tp / (cm.sum(dim=1) + eps)             # (C,)
+
+        results: dict[str, float] = {}
+        for idx, name in LABEL_NAMES.items():
+            results[f"iou/{name}"] = iou[idx].item()
+            results[f"f1/{name}"]  = f1[idx].item()
+            results[f"acc/{name}"] = acc[idx].item()  # ← add this
+
+        fg = [i for i in LABEL_NAMES if i != self.ignore_index]
+        results["mean_iou"] = iou[fg].mean().item()
+        results["mean_f1"]  = f1[fg].mean().item()
+        results["mean_acc"] = acc[fg].mean().item()   # ← add this
+
+        return results

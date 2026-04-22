@@ -32,6 +32,7 @@ def build_train_aug(cfg) -> A.Compose:
         A.VerticalFlip(p=aug.vertical_flip_p),
         A.RandomRotate90(p=aug.rotate_90_p),
         A.RandomBrightnessContrast(p=aug.random_brightness_contrast_p),
+        # A.GaussNoise(p=aug.gaussian_noise_p), 
         A.ElasticTransform(alpha=120, sigma=6, p=aug.elastic_transform_p),
         A.CoarseDropout(
             num_holes_range=(1, 8),

@@ -1,0 +1,47 @@
+GPU: NVIDIA GeForce RTX 4060 Laptop GPU
+
+============================================================
+  BRIGHT Disaster Assessment — Siamese UNet
+  Config  : configs/train_config.yaml
+  Device  : cuda
+  Epochs  : 50
+  Batch   : 4
+  LR      : 1e-05
+============================================================
+
+[get_dataloaders] train=2918 val=450 tiles
+ Model params: 92.58M
+Epoch 001 | lr=9.99e-06 | train loss=1.9916 mIoU=0.3411 | val loss=3.1158 mIoU=0.1843 | 243.4s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.1843)
+Epoch 002 | lr=9.96e-06 | train loss=1.6869 mIoU=0.4247 | val loss=3.2840 mIoU=0.1434 | 244.9s
+Epoch 003 | lr=9.92e-06 | train loss=1.5983 mIoU=0.4437 | val loss=4.6568 mIoU=0.1201 | 245.8s
+Epoch 004 | lr=9.86e-06 | train loss=1.4995 mIoU=0.4722 | val loss=2.5224 mIoU=0.1659 | 246.7s
+Epoch 005 | lr=9.78e-06 | train loss=1.4180 mIoU=0.5018 | val loss=2.7782 mIoU=0.2211 | 243.6s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2211)
+Epoch 006 | lr=9.68e-06 | train loss=1.4047 mIoU=0.5078 | val loss=2.6015 mIoU=0.1884 | 246.0s
+Epoch 007 | lr=9.57e-06 | train loss=1.3238 mIoU=0.5251 | val loss=2.4945 mIoU=0.2881 | 244.8s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2881)
+Epoch 008 | lr=9.44e-06 | train loss=1.2081 mIoU=0.5473 | val loss=2.2158 mIoU=0.2495 | 244.7s
+Epoch 009 | lr=9.30e-06 | train loss=1.2294 mIoU=0.5708 | val loss=2.4475 mIoU=0.1681 | 244.5s
+Epoch 010 | lr=9.14e-06 | train loss=1.1735 mIoU=0.5738 | val loss=2.0478 mIoU=0.3013 | 244.2s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3013)
+Epoch 011 | lr=8.97e-06 | train loss=1.0824 mIoU=0.6009 | val loss=2.2843 mIoU=0.2417 | 244.3s
+Epoch 012 | lr=8.78e-06 | train loss=1.0515 mIoU=0.6041 | val loss=3.1020 mIoU=0.1724 | 244.4s
+Epoch 013 | lr=8.58e-06 | train loss=1.0642 mIoU=0.6105 | val loss=3.2867 mIoU=0.1623 | 244.7s
+Epoch 014 | lr=8.37e-06 | train loss=0.9766 mIoU=0.6102 | val loss=2.9144 mIoU=0.2035 | 244.8s
+Epoch 015 | lr=8.15e-06 | train loss=0.9188 mIoU=0.6312 | val loss=3.7047 mIoU=0.1354 | 244.4s
+Epoch 016 | lr=7.91e-06 | train loss=0.9000 mIoU=0.6398 | val loss=2.1654 mIoU=0.2605 | 244.3s
+Epoch 017 | lr=7.67e-06 | train loss=0.8942 mIoU=0.6509 | val loss=9.4244 mIoU=0.0530 | 244.4s
+Epoch 018 | lr=7.42e-06 | train loss=0.8447 mIoU=0.6577 | val loss=11.0256 mIoU=0.0724 | 244.5s
+Epoch 019 | lr=7.16e-06 | train loss=0.8065 mIoU=0.6661 | val loss=10.3252 mIoU=0.0535 | 244.8s
+Epoch 020 | lr=6.89e-06 | train loss=0.8279 mIoU=0.6710 | val loss=4.0723 mIoU=0.1197 | 244.7s
+
+ EARLY STOPPING triggered after 20 epochs (10 epochs without improvement).
+
+  Training complete. Best val mean_iou: 0.3013
+
+============================================================
+  Best epoch : 10
+  Val mIoU   : 0.3013
+  Val mF1    : 0.4480
+============================================================

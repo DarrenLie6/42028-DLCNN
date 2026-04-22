@@ -71,9 +71,10 @@ class CombinedLoss(nn.Module):
         # reduction="sum" so we control averaging manually
         ce_loss = F.cross_entropy(
             logits, targets,
-            weight       = self.weights,
+            weight = self.weights,
             ignore_index = self.ignore_index,
-            reduction    = "sum",
+            reduction  = "mean",
+            label_smoothing=0.1
         )
 
         # Count valid (non-background) pixels

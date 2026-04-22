@@ -1,3 +1,6 @@
 # Ignore the dataset
 /data
 **pycache**
+
+# ignore the checkpoints
+/checkpoints/UNet.pth

@@ -128,6 +128,9 @@ def main():
 
     # train
     history = trainer.fit()
+    
+    # plot curves and cm
+    trainer.plot_history(save_dir=cfg.training.checkpoint_dir)
 
     # final summary
     best = max(history, key=lambda x: x["mean_iou"])
