@@ -1,0 +1,70 @@
+
+============================================================
+  BRIGHT Disaster Assessment — Siamese UNet
+  Config  : configs/train_config.yaml
+  Device  : cuda
+  Epochs  : 50
+  Batch   : 4
+  LR      : 0.0001
+============================================================
+
+[get_dataloaders] train=2918 val=450 tiles
+ Model params: 92.58M
+ Encoder frozen (23.5M params)
+ Encoder frozen (23.5M params)
+Epoch 001 | lr=9.99e-05 | train loss=0.2420 mIoU=0.4913 | val loss=0.4399 mIoU=0.1863 | 189.9s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.1863)
+Epoch 002 | lr=9.96e-05 | train loss=0.2033 mIoU=0.5348 | val loss=0.3920 mIoU=0.4055 | 188.8s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4055)
+Epoch 003 | lr=9.91e-05 | train loss=0.1969 mIoU=0.5395 | val loss=0.4525 mIoU=0.1198 | 189.7s
+Epoch 004 | lr=9.84e-05 | train loss=0.1850 mIoU=0.5548 | val loss=0.4053 mIoU=0.3121 | 189.8s
+Epoch 005 | lr=9.76e-05 | train loss=0.1840 mIoU=0.5603 | val loss=0.4489 mIoU=0.1378 | 193.8s
+Epoch 006 | lr=9.65e-05 | train loss=0.1825 mIoU=0.5636 | val loss=0.4209 mIoU=0.2531 | 187.8s
+Epoch 007 | lr=9.53e-05 | train loss=0.1745 mIoU=0.5799 | val loss=0.3957 mIoU=0.3493 | 187.7s
+Epoch 008 | lr=9.39e-05 | train loss=0.1720 mIoU=0.5909 | val loss=0.3848 mIoU=0.3647 | 188.3s
+Epoch 009 | lr=9.23e-05 | train loss=0.1734 mIoU=0.5846 | val loss=0.3843 mIoU=0.3988 | 187.6s
+ Encoder unfrozen
+ Encoder unfrozen at epoch 10 | LR halved to 4.61e-05
+Epoch 010 | lr=4.53e-05 | train loss=0.1638 mIoU=0.6030 | val loss=0.3813 mIoU=0.4064 | 249.3s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4064)
+Epoch 011 | lr=4.43e-05 | train loss=0.1519 mIoU=0.6368 | val loss=0.3945 mIoU=0.3278 | 249.6s
+Epoch 012 | lr=4.33e-05 | train loss=0.1489 mIoU=0.6461 | val loss=0.3866 mIoU=0.4269 | 246.7s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4269)
+Epoch 013 | lr=4.22e-05 | train loss=0.1425 mIoU=0.6683 | val loss=0.3892 mIoU=0.3949 | 254.5s
+Epoch 014 | lr=4.11e-05 | train loss=0.1379 mIoU=0.6774 | val loss=0.3837 mIoU=0.3891 | 247.1s
+Epoch 015 | lr=3.99e-05 | train loss=0.1282 mIoU=0.6969 | val loss=0.3862 mIoU=0.3748 | 246.1s
+Epoch 016 | lr=3.86e-05 | train loss=0.1266 mIoU=0.7036 | val loss=0.3822 mIoU=0.4301 | 247.9s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4301)
+Epoch 017 | lr=3.73e-05 | train loss=0.1236 mIoU=0.7118 | val loss=0.3816 mIoU=0.4198 | 252.1s
+Epoch 018 | lr=3.59e-05 | train loss=0.1219 mIoU=0.7109 | val loss=0.3823 mIoU=0.3957 | 257.9s
+Epoch 019 | lr=3.45e-05 | train loss=0.1175 mIoU=0.7224 | val loss=0.3736 mIoU=0.3904 | 246.1s
+Epoch 020 | lr=3.30e-05 | train loss=0.1150 mIoU=0.7276 | val loss=0.3730 mIoU=0.3908 | 246.8s
+Epoch 021 | lr=3.16e-05 | train loss=0.1144 mIoU=0.7376 | val loss=0.3721 mIoU=0.3882 | 246.9s
+Epoch 022 | lr=3.01e-05 | train loss=0.1086 mIoU=0.7497 | val loss=0.3813 mIoU=0.3843 | 246.7s
+Epoch 023 | lr=2.85e-05 | train loss=0.1068 mIoU=0.7541 | val loss=0.3893 mIoU=0.3929 | 247.3s
+Epoch 024 | lr=2.70e-05 | train loss=0.1092 mIoU=0.7459 | val loss=0.3803 mIoU=0.4120 | 246.5s
+Epoch 025 | lr=2.55e-05 | train loss=0.1051 mIoU=0.7521 | val loss=0.3806 mIoU=0.4026 | 246.6s
+Epoch 026 | lr=2.39e-05 | train loss=0.1009 mIoU=0.7670 | val loss=0.3793 mIoU=0.3750 | 246.8s
+Epoch 027 | lr=2.24e-05 | train loss=0.1008 mIoU=0.7627 | val loss=0.3754 mIoU=0.3928 | 248.4s
+Epoch 028 | lr=2.09e-05 | train loss=0.0951 mIoU=0.7770 | val loss=0.3724 mIoU=0.3914 | 246.2s
+Epoch 029 | lr=1.94e-05 | train loss=0.1004 mIoU=0.7648 | val loss=0.3769 mIoU=0.4176 | 246.9s
+Epoch 030 | lr=1.79e-05 | train loss=0.0972 mIoU=0.7743 | val loss=0.3764 mIoU=0.3895 | 246.1s
+Epoch 031 | lr=1.65e-05 | train loss=0.0959 mIoU=0.7694 | val loss=0.3784 mIoU=0.3970 | 246.5s
+
+ EARLY STOPPING triggered after 31 epochs (15 epochs without improvement).
+
+  Training complete. Best val mean_iou: 0.4301
+ Training curves saved → checkpoints\training_curves.png
+e:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\src\training\trainer.py:194: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  print(f" Reloaded best weights for CM (val mIoU={ckpt['val_mean_iou']:.4f})")
+ Reloaded best weights for CM (val mIoU=0.4301)
+ Val metrics rebuilt from best checkpoint
+e:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\src\training\trainer.py:224: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  fig, ax = plt.subplots(figsize=(7, 6))
+ Confusion matrix saved → checkpoints\confusion_matrix.png
+
+============================================================
+  Best epoch : 16
+  Val mIoU   : 0.4301
+  Val mF1    : 0.5690
+============================================================

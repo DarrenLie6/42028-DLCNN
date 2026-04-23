@@ -1,55 +1,66 @@
 from __future__ import annotations
 import torch
 import torch.nn as nn
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import resnet50, ResNet50_Weights, resnet34, ResNet34_Weights
 
 class ResNetEncoder(nn.Module):
-    """Resnet50 encoder - Shared ResNet50 encoder with seperate input stems
+    """
+    Shared ResNet encoder with separate input stems for optical and SAR.
+     - ResNet-50: out_channels = [64, 256, 512, 1024, 2048]  (bottleneck blocks)
+     - ResNet-34: out_channels = [64,  64, 128,  256,  512]  (basic blocks)
     """
     
-    def __init__(self, pretrained: bool = True):
+    def __init__(self, pretrained: bool = True, backbone: str = "resnet50"):
         super().__init__()
-        backbone = resnet50(
-            weights = ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
-        )
-        
-        # seperate STEMS
-        # optical stem: 3 > 64
+
+        # Load backbone — use `base` to avoid conflict with `backbone` string param
+        if backbone == "resnet50":
+            base = resnet50(
+                weights=ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
+            )
+            self.out_channels = [64, 256, 512, 1024, 2048]
+
+        elif backbone == "resnet34":
+            base = resnet34(
+                weights=ResNet34_Weights.IMAGENET1K_V1 if pretrained else None
+            )
+            self.out_channels = [64, 64, 128, 256, 512]
+
+        else:
+            raise ValueError(f"Unsupported backbone: '{backbone}'. Choose 'resnet50' or 'resnet34'.")
+
+        # Optical stem: 3 → 64 (pretrained weights)
         self.optical_stem = nn.Sequential(
-            backbone.conv1, #Conv2D(3, 64, 7, stride=2, padding=3)
-            backbone.bn1,
-            backbone.relu,
-            backbone.maxpool
+            base.conv1,      # Conv2d(3, 64, 7, stride=2, padding=3)
+            base.bn1,
+            base.relu,
+            base.maxpool
         )
-        # SAR stem: 1 > 64 (new conv- not pretrained)
+
+        # SAR stem: 1 → 64 (new conv — trained from scratch)
         self.sar_stem = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         )
-        
-        # shared encoder body
-        self.layer1 = backbone.layer1 # 256, stride 4
-        self.layer2 = backbone.layer2 # 512, stride 8
-        self.layer3 = backbone.layer3 # 1024, stride 16
-        self.layer4 = backbone.layer4 # 2048, stride 32
-        
-        # output channels at each scale (used for decoding)
-        self.out_channels = [64, 256, 512, 1024, 2048]
-        
-    def forward(self, x: torch.Tensor, modality: str = "optical"):
-        """Returns a list of feature maps [s1, s2, s3, s4, s5]
-        """
-        if modality == "optical":
-            stem = self.optical_stem
-        else:
-            stem = self.sar_stem
-        
-        s1 = stem(x) #(B, 64, H/2, W/2) - before maxpooling 
-        s2 = self.layer1(s1) #(B, 256, H/4, W/4)
-        s3 = self.layer2(s2) #(B, 512, H/8, W/8)
-        s4 = self.layer3(s3) #(B, 1024, H/16, W/16)
-        s5 = self.layer4(s4) #(B, 2048, H/32, W/32)
-        
+
+        # Shared encoder body
+        self.layer1 = base.layer1   # ResNet-50: 256ch | ResNet-34:  64ch
+        self.layer2 = base.layer2   # ResNet-50: 512ch | ResNet-34: 128ch
+        self.layer3 = base.layer3   # ResNet-50:1024ch | ResNet-34: 256ch
+        self.layer4 = base.layer4   # ResNet-50:2048ch | ResNet-34: 512ch
+
+        # NOTE: self.out_channels already set above per backbone — do NOT override here
+
+    def forward(self, x: torch.Tensor, modality: str = "optical") -> list[torch.Tensor]:
+        """Returns feature maps at 5 scales: [s1, s2, s3, s4, s5]"""
+        stem = self.optical_stem if modality == "optical" else self.sar_stem
+
+        s1 = stem(x)           # (B,  64, H/4,  W/4)
+        s2 = self.layer1(s1)   # (B,  C1, H/4,  W/4)
+        s3 = self.layer2(s2)   # (B,  C2, H/8,  W/8)
+        s4 = self.layer3(s3)   # (B,  C3, H/16, W/16)
+        s5 = self.layer4(s4)   # (B,  C4, H/32, W/32)
+
         return [s1, s2, s3, s4, s5]

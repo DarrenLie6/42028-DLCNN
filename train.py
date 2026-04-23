@@ -55,6 +55,7 @@ def build_model(cfg: SimpleNamespace) -> torch.nn.Module:
     model = SiameseUNet(
         num_classes = cfg.data.num_classes,
         pretrained  = cfg.model.pretrained,
+        backbone= cfg.model.backbone
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f" Model params: {n_params / 1e6:.2f}M")
@@ -105,6 +106,15 @@ def main():
 
     # model 
     model = build_model(cfg)
+    
+    model = model.to(device)
+    
+    dummy_opt = torch.zeros(1, 3, 512, 512).to(device)
+    dummy_sar = torch.zeros(1, 1, 512, 512).to(device)
+    dummy_valid = torch.ones(1, dtype=torch.bool).to(device)
+    with torch.no_grad():
+        out = model(dummy_opt, dummy_sar, dummy_valid)
+    print(f" Smoke test passed — output shape: {out.shape}")
 
     # trainer 
     trainer = Trainer(
@@ -128,6 +138,7 @@ def main():
 
     # train
     history = trainer.fit()
+    
     
     # plot curves and cm
     trainer.plot_history(save_dir=cfg.training.checkpoint_dir)

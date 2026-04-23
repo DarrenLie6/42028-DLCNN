@@ -27,8 +27,7 @@ augmentation:
 
 model:
   pretrained: true
-  encoder_channels: [64, 64, 128, 256, 512]
-  decoder_channels: [256, 128, 64, 32]
+  backbone: resnet34
 
 training:
   epochs: 50

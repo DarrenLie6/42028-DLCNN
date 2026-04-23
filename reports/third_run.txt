@@ -1,0 +1,92 @@
+
+ GPU: NVIDIA GeForce RTX 4060 Laptop GPU
+
+============================================================
+  BRIGHT Disaster Assessment — Siamese UNet
+  Config  : configs/train_config.yaml
+  Device  : cuda
+  Epochs  : 50
+  Batch   : 4
+  LR      : 0.0001
+============================================================
+
+[get_dataloaders] train=2918 val=450 tiles
+ Model params: 27.69M
+ Smoke test passed — output shape: torch.Size([1, 4, 512, 512])
+ Encoder frozen (21.3M params)
+Epoch 001 | lr=9.99e-05 | train loss=0.2522 mIoU=0.4627 | val loss=0.4078 mIoU=0.3360 | 111.0s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3360)
+Epoch 002 | lr=9.96e-05 | train loss=0.2151 mIoU=0.5072 | val loss=0.3961 mIoU=0.3648 | 107.4s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3648)
+Epoch 003 | lr=9.91e-05 | train loss=0.2006 mIoU=0.5222 | val loss=0.4041 mIoU=0.3356 | 108.0s
+Epoch 004 | lr=9.84e-05 | train loss=0.1976 mIoU=0.5290 | val loss=0.3984 mIoU=0.3517 | 107.4s
+Epoch 005 | lr=9.76e-05 | train loss=0.1891 mIoU=0.5448 | val loss=0.4056 mIoU=0.3406 | 107.9s
+Epoch 006 | lr=9.65e-05 | train loss=0.1924 mIoU=0.5360 | val loss=0.4020 mIoU=0.3512 | 111.2s
+Epoch 007 | lr=9.53e-05 | train loss=0.1839 mIoU=0.5513 | val loss=0.4062 mIoU=0.3219 | 110.3s
+Epoch 008 | lr=9.39e-05 | train loss=0.1876 mIoU=0.5429 | val loss=0.3961 mIoU=0.3594 | 109.3s
+Epoch 009 | lr=9.23e-05 | train loss=0.1847 mIoU=0.5519 | val loss=0.3991 mIoU=0.3409 | 108.2s
+ Encoder unfrozen
+ Encoder unfrozen at epoch 10 | LR halved to 4.61e-05
+Epoch 010 | lr=4.53e-05 | train loss=0.1772 mIoU=0.5729 | val loss=0.4098 mIoU=0.3168 | 148.2s
+Epoch 011 | lr=4.43e-05 | train loss=0.1739 mIoU=0.5850 | val loss=0.4014 mIoU=0.3619 | 147.3s
+Epoch 012 | lr=4.33e-05 | train loss=0.1632 mIoU=0.6087 | val loss=0.3954 mIoU=0.3661 | 149.6s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3661)
+Epoch 013 | lr=4.22e-05 | train loss=0.1563 mIoU=0.6277 | val loss=0.3896 mIoU=0.4079 | 149.8s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4079)
+Epoch 014 | lr=4.11e-05 | train loss=0.1497 mIoU=0.6452 | val loss=0.4024 mIoU=0.3571 | 148.4s
+Epoch 015 | lr=3.99e-05 | train loss=0.1412 mIoU=0.6688 | val loss=0.3814 mIoU=0.4062 | 148.0s
+Epoch 016 | lr=3.86e-05 | train loss=0.1422 mIoU=0.6665 | val loss=0.3855 mIoU=0.4076 | 148.4s
+Epoch 017 | lr=3.73e-05 | train loss=0.1359 mIoU=0.6811 | val loss=0.3832 mIoU=0.4198 | 150.3s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4198)
+Epoch 018 | lr=3.59e-05 | train loss=0.1306 mIoU=0.6896 | val loss=0.3789 mIoU=0.4171 | 151.1s
+Epoch 019 | lr=3.45e-05 | train loss=0.1308 mIoU=0.6973 | val loss=0.3877 mIoU=0.3956 | 145.8s
+Epoch 020 | lr=3.30e-05 | train loss=0.1272 mIoU=0.7047 | val loss=0.3743 mIoU=0.4716 | 145.2s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4716)
+Epoch 021 | lr=3.16e-05 | train loss=0.1231 mIoU=0.7141 | val loss=0.3730 mIoU=0.4426 | 144.7s
+Epoch 022 | lr=3.01e-05 | train loss=0.1192 mIoU=0.7159 | val loss=0.3765 mIoU=0.4493 | 147.3s
+Epoch 023 | lr=2.85e-05 | train loss=0.1166 mIoU=0.7273 | val loss=0.3650 mIoU=0.4828 | 158.6s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4828)
+Epoch 024 | lr=2.70e-05 | train loss=0.1138 mIoU=0.7383 | val loss=0.3680 mIoU=0.4472 | 160.0s
+Epoch 025 | lr=2.55e-05 | train loss=0.1115 mIoU=0.7440 | val loss=0.3661 mIoU=0.4737 | 162.9s
+Epoch 026 | lr=2.39e-05 | train loss=0.1071 mIoU=0.7478 | val loss=0.3694 mIoU=0.4821 | 166.0s
+Epoch 027 | lr=2.24e-05 | train loss=0.1093 mIoU=0.7458 | val loss=0.3732 mIoU=0.4549 | 155.1s
+Epoch 028 | lr=2.09e-05 | train loss=0.1020 mIoU=0.7603 | val loss=0.3725 mIoU=0.4581 | 148.9s
+Epoch 029 | lr=1.94e-05 | train loss=0.1040 mIoU=0.7686 | val loss=0.3615 mIoU=0.4922 | 149.4s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4922)
+Epoch 030 | lr=1.79e-05 | train loss=0.0994 mIoU=0.7697 | val loss=0.3698 mIoU=0.4793 | 149.6s
+Epoch 031 | lr=1.65e-05 | train loss=0.0954 mIoU=0.7788 | val loss=0.3643 mIoU=0.4925 | 149.5s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.4925)
+Epoch 032 | lr=1.51e-05 | train loss=0.0959 mIoU=0.7778 | val loss=0.3653 mIoU=0.4855 | 148.9s
+Epoch 033 | lr=1.37e-05 | train loss=0.0913 mIoU=0.7790 | val loss=0.3671 mIoU=0.5116 | 149.9s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.5116)
+Epoch 034 | lr=1.24e-05 | train loss=0.0926 mIoU=0.7836 | val loss=0.3673 mIoU=0.5132 | 149.4s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.5132)
+Epoch 035 | lr=1.11e-05 | train loss=0.0891 mIoU=0.7939 | val loss=0.3655 mIoU=0.5019 | 149.1s
+Epoch 036 | lr=9.88e-06 | train loss=0.0874 mIoU=0.8038 | val loss=0.3676 mIoU=0.4900 | 153.2s
+Epoch 037 | lr=8.72e-06 | train loss=0.0866 mIoU=0.7958 | val loss=0.3628 mIoU=0.5131 | 149.6s
+Epoch 038 | lr=7.63e-06 | train loss=0.0872 mIoU=0.7987 | val loss=0.3612 mIoU=0.5261 | 150.1s
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.5261)
+Epoch 039 | lr=6.62e-06 | train loss=0.0849 mIoU=0.8030 | val loss=0.3603 mIoU=0.5119 | 149.4s
+Epoch 040 | lr=5.68e-06 | train loss=0.0848 mIoU=0.8038 | val loss=0.3632 mIoU=0.4948 | 149.0s
+Epoch 041 | lr=4.81e-06 | train loss=0.0823 mIoU=0.8114 | val loss=0.3653 mIoU=0.5063 | 148.2s
+Epoch 042 | lr=4.03e-06 | train loss=0.0840 mIoU=0.8085 | val loss=0.3625 mIoU=0.5124 | 146.3s
+Epoch 043 | lr=3.33e-06 | train loss=0.0808 mIoU=0.8119 | val loss=0.3660 mIoU=0.4949 | 145.1s
+Epoch 044 | lr=2.72e-06 | train loss=0.0833 mIoU=0.8053 | val loss=0.3657 mIoU=0.5025 | 144.6s
+Epoch 045 | lr=2.20e-06 | train loss=0.0824 mIoU=0.8104 | val loss=0.3663 mIoU=0.4919 | 147.0s
+Epoch 046 | lr=1.77e-06 | train loss=0.0830 mIoU=0.8107 | val loss=0.3630 mIoU=0.5067 | 149.0s
+Epoch 047 | lr=1.43e-06 | train loss=0.0825 mIoU=0.8087 | val loss=0.3628 mIoU=0.5064 | 147.1s
+Epoch 048 | lr=1.19e-06 | train loss=0.0780 mIoU=0.8198 | val loss=0.3638 mIoU=0.4974 | 147.5s
+Epoch 049 | lr=1.05e-06 | train loss=0.0811 mIoU=0.8153 | val loss=0.3636 mIoU=0.5031 | 148.0s
+Epoch 050 | lr=1.00e-06 | train loss=0.0808 mIoU=0.8159 | val loss=0.3635 mIoU=0.5076 | 147.0s
+
+  Training complete. Best val mean_iou: 0.5261
+ Training curves saved → checkpoints\training_curves.png
+ Reloaded best weights for CM (val mIoU=0.5261)
+ Val metrics rebuilt from best checkpoint
+ Confusion matrix saved → checkpoints\confusion_matrix.png
+
+============================================================
+  Best epoch : 38
+  Val mIoU   : 0.5261
+  Val mF1    : 0.6681
+============================================================

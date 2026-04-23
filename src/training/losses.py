@@ -57,7 +57,7 @@ class CombinedLoss(nn.Module):
         self.ignore_index = ignore_index
 
         if class_weights is None:
-            class_weights = [0.0, 1.0, 7.8, 13.0]
+            class_weights = [0.0, 1.0, 7.8, 20.0]
 
         # register_buffer → moves automatically with .to(device)
         self.register_buffer(

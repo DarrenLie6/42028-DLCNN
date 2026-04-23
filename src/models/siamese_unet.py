@@ -13,25 +13,26 @@ from .decoder import DecoderBlock, DoubleConv
 
 class SiameseUNet(nn.Module):
     
-    def __init__(self, num_classes:int = 4, pretrained: bool = True):
+    def __init__(self, num_classes:int = 4, pretrained: bool = True, backbone: str = "resnet50"):
         super().__init__()
-        self.encoder = ResNetEncoder(pretrained=pretrained)
+        self.encoder = ResNetEncoder(pretrained=pretrained, backbone=backbone)
         
         # each skip with pre features post feature to double the channels
-        enc_ch = self.encoder.out_channels # [64, 256, 512, 1024, 2048]
+        enc_ch = self.encoder.out_channels # [64, 256, 512, 1024, 2048] , ResNet-34: [64,  64, 128,  256,  512]
         
-        # bottleneck fusion: conacat pre + post > 2048*2
+        # bottleneck fusion: works with both the model
+        bottleneck_out = enc_ch[4] // 2
         self.bottleneck_conv = nn.Sequential(
-            DoubleConv(enc_ch[4] * 2, 1024),
+            DoubleConv(enc_ch[4] * 2, bottleneck_out),
             nn.Dropout2d(p=0.3)
-            )
+        )
         
         # decoder blocks 
         # skp_ch  = pre channels + post channels 
-        self.dec4 = DecoderBlock(1024, enc_ch[3] * 2, 512)
-        self.dec3 = DecoderBlock(512, enc_ch[2] * 2, 256)
-        self.dec2 = DecoderBlock(256, enc_ch[1] * 2, 128)
-        self.dec1 = DecoderBlock(128, enc_ch[0] * 2, 64)
+        self.dec4 = DecoderBlock(bottleneck_out, enc_ch[3] * 2, enc_ch[3])
+        self.dec3 = DecoderBlock(enc_ch[3], enc_ch[2] * 2, enc_ch[2])
+        self.dec2 = DecoderBlock(enc_ch[2], enc_ch[1] * 2, enc_ch[1])
+        self.dec1 = DecoderBlock(enc_ch[1], enc_ch[0] * 2, 64)
         
         # final upsample x2 back to original resolutioin + classification head
         self.final_upsample = nn.Upsample(

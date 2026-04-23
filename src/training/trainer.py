@@ -189,7 +189,7 @@ class Trainer:
         # reload Best Checkpoint for CM 
         best_path = os.path.join(self.checkpoint_dir, "UNet.pth")
         if os.path.exists(best_path):
-            ckpt = torch.load(best_path, map_location=self.device)
+            ckpt = torch.load(best_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(ckpt["model_state"])
             print(f" Reloaded best weights for CM (val mIoU={ckpt['val_mean_iou']:.4f})")
 
@@ -219,7 +219,7 @@ class Trainer:
 
         # Row-normalise so each cell = recall per class
         row_sums = cm.sum(axis=1, keepdims=True)
-        cm_norm  = np.divide(cm, row_sums, where=row_sums != 0)
+        cm_norm = np.divide(cm, row_sums, out=np.zeros_like(cm), where=row_sums != 0)
 
         fig, ax = plt.subplots(figsize=(7, 6))
         im = ax.imshow(cm_norm, interpolation="nearest", cmap="Blues", vmin=0, vmax=1)
@@ -399,7 +399,7 @@ class Trainer:
         Restore trainer state from a saved checkpoint.
         """
         
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         
         self.model.load_state_dict(ckpt["model_state"])
         self.optimizer.load_state_dict(ckpt["optim_state"])
