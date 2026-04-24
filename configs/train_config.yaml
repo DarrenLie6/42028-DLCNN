@@ -10,7 +10,7 @@ data:
   val_split: "val_set.txt"
   test_split: "test_set.txt"
   num_classes: 4
-  tile_size: 512
+  tile_size: 256
   optical_mean: [0.358, 0.342, 0.309]
   optical_std: [0.206, 0.178, 0.163]
   sar_mean: [0.2243]
@@ -26,12 +26,11 @@ augmentation:
   coarse_dropout_p: 0.2
 
 model:
-  pretrained: true
-  backbone: resnet34
+  dropout_p: 0.1
 
 training:
-  epochs: 50
-  batch_size: 4
+  epochs: 200
+  batch_size: 8
   num_workers:  4
   learning_rate: 1.0e-4
   weight_decay: 1.0e-4

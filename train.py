@@ -25,8 +25,8 @@ def set_seed(seed: int = 42) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
 
 # config loader
 def load_config(path: str) -> dict:
@@ -54,8 +54,9 @@ def get_device() -> torch.device:
 def build_model(cfg: SimpleNamespace) -> torch.nn.Module:
     model = SiameseUNet(
         num_classes = cfg.data.num_classes,
-        pretrained  = cfg.model.pretrained,
-        backbone= cfg.model.backbone
+        # pretrained  = cfg.model.pretrained,
+        # backbone= cfg.model.backbone
+        dropout_p= cfg.model.dropout_p
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f" Model params: {n_params / 1e6:.2f}M")
@@ -107,14 +108,22 @@ def main():
     # model 
     model = build_model(cfg)
     
-    model = model.to(device)
+    # model = model.to(device)
     
-    dummy_opt = torch.zeros(1, 3, 512, 512).to(device)
-    dummy_sar = torch.zeros(1, 1, 512, 512).to(device)
-    dummy_valid = torch.ones(1, dtype=torch.bool).to(device)
-    with torch.no_grad():
-        out = model(dummy_opt, dummy_sar, dummy_valid)
-    print(f" Smoke test passed — output shape: {out.shape}")
+    # dummy_opt = torch.zeros(1, 3, 512, 512).to(device)
+    # dummy_sar = torch.zeros(1, 1, 512, 512).to(device)
+    # dummy_valid = torch.ones(1, dtype=torch.bool).to(device)
+    # with torch.no_grad():
+    #     out = model(dummy_opt, dummy_sar, dummy_valid)
+    # print(f" Smoke test passed — output shape: {out.shape}")
+    
+    # print(f"[DEBUG] tile_size from cfg: {cfg.data.tile_size}")
+    # print(f"[DEBUG] dummy_opt shape: {dummy_opt.shape}")
+
+    # with torch.no_grad():
+    #     out = model(dummy_opt, dummy_sar, dummy_valid)
+
+    # print(f"[DEBUG] output shape: {out.shape}")
 
     # trainer 
     trainer = Trainer(

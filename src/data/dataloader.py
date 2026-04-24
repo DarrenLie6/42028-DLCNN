@@ -88,11 +88,11 @@ def _compute_tile_weights(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
 
 def collate_fn(batch):
     return {
-        "optical": torch.stack([b["optical"]       for b in batch]),
+        "optical": torch.stack([b["optical"] for b in batch]),
         "optical_valid": torch.stack([b["optical_valid"] for b in batch]),
-        "sar": torch.stack([b["sar"]           for b in batch]),
-        "label": torch.stack([b["label"]         for b in batch]),
-        "stem": [b["stem"]                      for b in batch],
+        "sar": torch.stack([b["sar"]   for b in batch]),
+        "label": torch.stack([b["label"]   for b in batch]),
+        "stem": [b["stem"]   for b in batch],
     }
 
 # Data Loader
@@ -128,6 +128,8 @@ def get_dataloaders(cfg):
         sampler= sampler,
         num_workers= cfg.training.num_workers,
         pin_memory= True,
+        persistent_workers= True,
+        prefetch_factor= 2,
         drop_last= True
     )
     
@@ -136,7 +138,7 @@ def get_dataloaders(cfg):
         root_dir   = cfg.data.root_dir,
         split_file = splits_dir / cfg.data.val_split,
         cfg        = cfg,
-        transform  = build_val_aug(),
+        transform  = build_val_aug(cfg),
         mode       = "val",
     )
 
@@ -146,6 +148,8 @@ def get_dataloaders(cfg):
         shuffle     = False,
         num_workers = cfg.training.num_workers,
         pin_memory  = True,
+        persistent_workers= True,
+        prefetch_factor= 2,
     )
     
     # test dataset
@@ -155,7 +159,7 @@ def get_dataloaders(cfg):
             root_dir   = cfg.data.root_dir,
             split_file = test_split,
             cfg        = cfg,
-            transform  = build_val_aug(),
+            transform  = build_val_aug(cfg),
             mode       = "test",
         )
         test_loader = DataLoader(

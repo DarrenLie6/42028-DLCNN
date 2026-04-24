@@ -22,7 +22,7 @@ Training and validation loop for BRIGHT Siamese UNet.
 NUM_CLASSES   = 4
 IGNORE_INDEX  = 0
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [0.0, 1.0, 7.8, 13.0]
+CLASS_WEIGHTS = [0.0, 1.0, 7.8, 20.0]
 
 class Trainer:
     """Encapsulate the full training loop for the Siamese UNet"""
@@ -89,17 +89,17 @@ class Trainer:
         """Run the full training loop."""
 
         # Freeze encoder for first 10 epochs
-        self._freeze_encoder()
+        # self._freeze_encoder()
 
         for epoch in range(1, self.num_epochs + 1):
             epoch_start = time.time()
 
             # Unfreeze encoder at epoch 10 and halve LR
-            if epoch == 10:
-                self._unfreeze_encoder()
-                for g in self.optimizer.param_groups:
-                    g['lr'] = g['lr'] * 0.5
-                print(f" Encoder unfrozen at epoch {epoch} | LR halved to {self.optimizer.param_groups[0]['lr']:.2e}")
+            # if epoch == 10:
+            #     self._unfreeze_encoder()
+            #     for g in self.optimizer.param_groups:
+            #         g['lr'] = g['lr'] * 0.5
+            #     print(f" Encoder unfrozen at epoch {epoch} | LR halved to {self.optimizer.param_groups[0]['lr']:.2e}")
 
             train_stats = self._train_epoch(epoch)
             val_stats   = self._val_epoch(epoch)
@@ -264,13 +264,10 @@ class Trainer:
         n_batches = 0
 
         for batch in self.train_loader:
-            optical = batch["optical"].to(self.device)      # (B,3,H,W) or None
-            sar = batch["sar"].to(self.device)          # (B,1,H,W)
+            optical = batch["optical"].to(self.device)      # (B,3,H,W)
+            sar = batch["sar"].to(self.device)              # (B,1,H,W)
             targets = batch["label"].to(self.device)         # (B,H,W) long
-            optical_valid = batch.get("optical_valid", None)
-
-            if optical_valid is not None:
-                optical_valid = optical_valid.to(self.device)   # (B,) bool
+            optical_valid = batch["optical_valid"].to(self.device)  # (B,) bool
 
             self.optimizer.zero_grad()
 

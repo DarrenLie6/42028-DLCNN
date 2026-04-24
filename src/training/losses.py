@@ -81,10 +81,7 @@ class CombinedLoss(nn.Module):
         valid_pixels = (targets != self.ignore_index).sum().float()
 
         # Guard against all-background batch → CE would be NaN otherwise
-        if valid_pixels > 0:
-            ce_loss = ce_loss / valid_pixels
-        else:
-            ce_loss = torch.tensor(0.0, device=logits.device, requires_grad=True)
+        ce_loss = logits.sum() * 0.0
 
         dice_loss = self.dice(logits, targets)
         total     = self.ce_w * ce_loss + self.dice_w * dice_loss
