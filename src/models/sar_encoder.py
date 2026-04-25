@@ -18,7 +18,7 @@ class ResidualBlock(nn.Module):
             nn.BatchNorm2d(ch),
             nn.ReLU(inplace=True),
             nn.Dropout2d(p=dropout_p),
-            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(ch, ch, kernel_size=1, padding=0, bias=False),
             nn.BatchNorm2d(ch),
         )
         self.relu = nn.ReLU(inplace=True)

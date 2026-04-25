@@ -32,6 +32,7 @@ class SEBlock(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(ch, ch // reduction, bias=False),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=0.3),
             nn.Linear(ch // reduction, ch, bias=False),
             nn.Sigmoid()
         )

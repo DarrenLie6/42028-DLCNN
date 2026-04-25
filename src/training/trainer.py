@@ -20,9 +20,9 @@ Training and validation loop for BRIGHT Siamese UNet.
 """
 
 NUM_CLASSES   = 4
-IGNORE_INDEX  = 0
+IGNORE_INDEX  = -100
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [0.0, 1.0, 7.8, 20.0]
+CLASS_WEIGHTS = [1.0, 1.0, 10.0, 15.0]
 
 class Trainer:
     """Encapsulate the full training loop for the Siamese UNet"""

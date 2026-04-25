@@ -45,7 +45,7 @@ class SiameseUNet(nn.Module):
         bottleneck_in = proj_ch[3] * 2  # derived: 256*2=512 or 128*2=256
         self.bottleneck = nn.Sequential(
             DoubleConv(bottleneck_in, bottleneck_in // 2),
-            nn.Dropout2d(p=0.3)
+            nn.Dropout2d(p=0.4)
         )
         bottleneck_out = bottleneck_in // 2     # also derived
 
