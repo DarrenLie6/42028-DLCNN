@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 import random
 from types import SimpleNamespace
 
@@ -144,6 +145,12 @@ def main():
     if args.resume:
         start_epoch = trainer.load_checkpoint(args.resume)
         print(f" Resuming from epoch {start_epoch + 1}")
+    else:
+        # ── Auto-detect checkpoint if no --resume flag given ──────────────
+        auto_ckpt = Path(t.checkpoint_dir) / "UNet.pth"
+        if auto_ckpt.exists():
+            start_epoch = trainer.load_checkpoint(str(auto_ckpt))
+            print(f"Auto-resumed from epoch {start_epoch + 1}")
 
     # train
     history = trainer.fit()

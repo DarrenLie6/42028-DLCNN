@@ -22,7 +22,7 @@ Training and validation loop for BRIGHT Siamese UNet.
 NUM_CLASSES   = 4
 IGNORE_INDEX  = -100
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [1.0, 1.0, 10.0, 15.0]
+CLASS_WEIGHTS = [1.0, 4.0, 7.8, 14.0]
 
 class Trainer:
     """Encapsulate the full training loop for the Siamese UNet"""
@@ -85,13 +85,13 @@ class Trainer:
         self.history = []   # list of per-epoch dicts
         
     # public entry point
-    def fit(self) -> list[dict]:
+    def fit(self, start_epoch: int = 0) -> list[dict]:
         """Run the full training loop."""
 
         # Freeze encoder for first 10 epochs
         # self._freeze_encoder()
 
-        for epoch in range(1, self.num_epochs + 1):
+        for epoch in range(start_epoch + 1, self.num_epochs + 1):
             epoch_start = time.time()
 
             # Unfreeze encoder at epoch 10 and halve LR
