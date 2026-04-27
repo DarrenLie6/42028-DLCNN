@@ -12,6 +12,8 @@ def _to_float32(arr: np.ndarray) -> np.ndarray:
         return arr.astype(np.float32) / 255.0
     if arr.dtype == np.uint16:
         return arr.astype(np.float32) / 65535.0
+    if arr.dtype == np.int16:
+        return np.clip(arr, 0, 255).astype(np.float32) / 255.0
     return arr.astype(np.float32)
 
 def load_optical(path: str | Path, tile_size: int = 512) -> np.ndarray:
