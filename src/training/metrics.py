@@ -9,9 +9,9 @@ import torch
 """
 
 NUM_CLASSES = 4
-IGNORE_INDEX = 0
+IGNORE_INDEX = -100
 LABEL_NAMES = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [0.0, 1.0, 7.8, 13.0]
+CLASS_WEIGHTS = [0.5, 1.0, 7.8, 13.0]
 
 class SegmentationMetrics:
     """
@@ -43,10 +43,14 @@ class SegmentationMetrics:
         preds = logits.argmax(dim=1).to(self.device)   # (B, H, W)
         targets = targets.to(self.device)
 
-        # Discard background pixels entirely — they never touch the CM
-        valid_mask = targets != self.ignore_index       # (B, H, W) bool
-        preds_flat = preds[valid_mask]                  # (N,)
-        targets_flat = targets[valid_mask]                # (N,)
+        # Include all pixels (background included, -100 ignored by PyTorch)
+        preds_flat = preds.reshape(-1)                  # (B*H*W,)
+        targets_flat = targets.reshape(-1)              # (B*H*W,)
+
+        # Filter out only the ignore_index (-100) if it exists
+        mask = targets_flat != self.ignore_index
+        preds_flat = preds_flat[mask]
+        targets_flat = targets_flat[mask]
 
         # bincount trick: encode (true, pred) as a single integer index
         indices = targets_flat * self.num_classes + preds_flat
@@ -119,9 +123,10 @@ class SegmentationMetrics:
             results[f"f1/{name}"]  = f1[idx].item()
             results[f"acc/{name}"] = acc[idx].item()  # ← add this
 
-        fg = [i for i in LABEL_NAMES if i != self.ignore_index]
-        results["mean_iou"] = iou[fg].mean().item()
-        results["mean_f1"]  = f1[fg].mean().item()
-        results["mean_acc"] = acc[fg].mean().item()   # ← add this
+        # Include ALL classes in mean (background + foreground)
+        all_classes = list(range(self.num_classes))
+        results["mean_iou"] = iou[all_classes].mean().item()
+        results["mean_f1"]  = f1[all_classes].mean().item()
+        results["mean_acc"] = acc[all_classes].mean().item()
 
         return results

@@ -32,7 +32,7 @@ def build_train_aug(cfg) -> A.Compose:
     
     aug = cfg.augmentation
     return A.Compose([
-        A.Resize(tile_size, tile_size, interpolation=1),
+        A.Resize(tile_size, tile_size, interpolation=0),  # INTER_NEAREST for semantic masks
         A.HorizontalFlip(p=aug.horizontal_flip_p),
         A.VerticalFlip(p=aug.vertical_flip_p),
         A.RandomRotate90(p=aug.rotate_90_p),
@@ -52,5 +52,5 @@ def build_val_aug(cfg) -> A.Compose:
     tile_size = 256 if cfg is None else cfg.data.tile_size
     
     return  A.Compose([
-         A.Resize(tile_size, tile_size, interpolation=1)
+         A.Resize(tile_size, tile_size, interpolation=0)  # INTER_NEAREST for semantic masks
         ], additional_targets={"sar": "image"})

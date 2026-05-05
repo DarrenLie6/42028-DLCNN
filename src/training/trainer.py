@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.amp import GradScaler, autocast
+from tqdm import tqdm
 
 from src.training.metrics import SegmentationMetrics
 from src.training.losses  import CombinedLoss
@@ -22,7 +23,7 @@ Training and validation loop for BRIGHT Siamese UNet.
 NUM_CLASSES   = 4
 IGNORE_INDEX  = -100
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [1.0, 4.0, 7.8, 14.0]
+CLASS_WEIGHTS = [0.5, 1.0, 7.8, 20.0]  # Background now included with weight 0.5
 
 class Trainer:
     """Encapsulate the full training loop for the Siamese UNet"""
@@ -91,6 +92,7 @@ class Trainer:
         # Freeze encoder for first 10 epochs
         # self._freeze_encoder()
 
+       
         for epoch in range(start_epoch + 1, self.num_epochs + 1):
             epoch_start = time.time()
 
@@ -262,8 +264,15 @@ class Trainer:
         total_ce = 0.0
         total_dice = 0.0
         n_batches = 0
+        
+        batch_bar = tqdm(
+            self.train_loader,
+            desc  = f"  Epoch {epoch:03d} [Train]",
+            leave = False,
+            unit  = "batch",
+        )
 
-        for batch in self.train_loader:
+        for batch in batch_bar:
             optical = batch["optical"].to(self.device)      # (B,3,H,W)
             sar = batch["sar"].to(self.device)              # (B,1,H,W)
             targets = batch["label"].to(self.device)         # (B,H,W) long
@@ -291,8 +300,18 @@ class Trainer:
 
             # Accumulate metrics (no grad needed)
             self.train_metrics.update(logits.detach(), targets)
+            
+            batch_bar.set_postfix(
+                loss = f"{loss.item():.4f}",
+                ce   = f"{ce_loss.item():.4f}",
+                dice = f"{dice_loss.item():.4f}",
+            )
 
-        metrics = self.train_metrics.compute()
+        # ── Compute metrics in eval mode for stable BatchNorm stats ──────
+        self.model.eval()
+        with torch.no_grad():
+            metrics = self.train_metrics.compute()
+        self.model.train()
 
         return {
             "train/loss":      total_loss / n_batches,
@@ -316,8 +335,15 @@ class Trainer:
         total_ce  = 0.0
         total_dice = 0.0
         n_batches = 0
+        
+        val_batch_bar = tqdm(
+            self.val_loader,
+            desc  = f"  Epoch {epoch:03d} [Validation]",
+            leave = False,
+            unit  = "batch",
+        )
 
-        for batch in self.val_loader:
+        for batch in val_batch_bar:
             optical = batch["optical"].to(self.device)
             sar = batch["sar"].to(self.device)
             targets = batch["label"].to(self.device)

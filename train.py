@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from pathlib import Path
 import random
 from types import SimpleNamespace
@@ -7,10 +8,17 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 import yaml
+import warnings
 
 from src.data.dataloader import get_dataloaders
 from src.models.siamese_unet import SiameseUNet
 from src.training.trainer import Trainer
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# warnings.filterwarnings("ignore", category=UserWarning)
+os.environ["OPENCV_LOG_LEVEL"] = "ERROR"
+os.environ["GDAL_PAM_ENABLED"] = "NO"
+os.environ["CPL_LOG"] = "nul" if sys.platform == "win32" else "/dev/null"
 
 """
 Launch script for BRIGHT Siamese UNet training.
@@ -31,7 +39,7 @@ def set_seed(seed: int = 42) -> None:
 
 # config loader
 def load_config(path: str) -> dict:
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
     def to_ns(d):
@@ -52,15 +60,24 @@ def get_device() -> torch.device:
     return device
 
 # model
-def build_model(cfg: SimpleNamespace) -> torch.nn.Module:
+# def build_model(cfg: SimpleNamespace) -> torch.nn.Module:
+#     model = SiameseUNet(
+#         num_classes = cfg.data.num_classes,
+#         # pretrained  = cfg.model.pretrained,
+#         # backbone= cfg.model.backbone
+#         dropout_p= cfg.model.dropout_p
+#     )
+#     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+#     print(f" Model params: {n_params / 1e6:.2f}M")
+#     return model
+def build_model(cfg) -> torch.nn.Module:
     model = SiameseUNet(
         num_classes = cfg.data.num_classes,
-        # pretrained  = cfg.model.pretrained,
-        # backbone= cfg.model.backbone
-        dropout_p= cfg.model.dropout_p
+        dropout_p   = cfg.model.dropout_p,
+        dataset     = getattr(cfg.data, "dataset", "bright"),  # ← pass dataset
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f" Model params: {n_params / 1e6:.2f}M")
+    print(f"Model params: {n_params / 1e6:.2f}M")
     return model
 
 # mian

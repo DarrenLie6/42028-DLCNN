@@ -1,20 +1,28 @@
 # configs/train_config.yaml
 
+# data:
+#   root_dir: "data/bright"
+#   pre_event_dir: "pre-event"
+#   post_event_dir: "post-event"
+#   target_dir: "target"
+#   split_file_dir: "data/bright/splits"
+#   train_split: "train_set.txt"
+#   val_split: "val_set.txt"
+#   test_split: "test_set.txt"
+#   num_classes: 4
+#   tile_size: 256
+#   optical_mean: [0.358, 0.342, 0.309]
+#   optical_std: [0.206, 0.178, 0.163]
+#   sar_mean: [0.2243]
+#   sar_std: [0.1477]
+#   xview2: "data/xview2/geotiff"
+
 data:
-  root_dir: "data/bright"
-  pre_event_dir: "pre-event"
-  post_event_dir: "post-event"
-  target_dir: "target"
-  split_file_dir: "data/bright/splits"
-  train_split: "train_set.txt"
-  val_split: "val_set.txt"
-  test_split: "test_set.txt"
-  num_classes: 4
-  tile_size: 256
-  optical_mean: [0.358, 0.342, 0.309]
-  optical_std: [0.206, 0.178, 0.163]
-  sar_mean: [0.2243]
-  sar_std: [0.1477]
+  dataset:        xview
+  root_dir:       data/xView2/geotiffs       # ← root containing tier1/tier3/hold/test
+  tile_size:      512              # ← resize to 256x256
+  num_classes:    4                # ← we collapse xBD's 5 → 4
+  sar_channels:   3 
 
 augmentation:
   horizontal_flip_p: 0.5
@@ -29,11 +37,11 @@ model:
   dropout_p: 0.1
 
 training:
-  epochs: 200
+  epochs: 500
   batch_size: 8
   num_workers:  4
   learning_rate: 1.0e-3
-  weight_decay: 1.0e-3
+  weight_decay: 1.0e-2
   min_lr: 1.0e-6
-  patience: 15
-  checkpoint_dir: "checkpoints"
+  patience: 100
+  checkpoint_dir: "checkpoints/xview2"
