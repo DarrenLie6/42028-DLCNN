@@ -28,7 +28,7 @@ class UNet(nn.Module):
 
         self.bottleneck = nn.Sequential(
             DoubleConv(bottleneck_in, bottleneck_out),
-            nn.Dropout2d(p=0.4),
+            nn.Dropout2d(p=0.5),  # Increased from 0.4 to improve regularization
         )
 
         # ── Decoder ───────────────────────────────────────────────────

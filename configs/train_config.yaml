@@ -20,7 +20,7 @@
 data:
   dataset:        xview
   root_dir:       data/xView2/geotiffs       # ← root containing tier1/tier3/hold/test
-  tile_size:      512              # ← resize to 256x256
+  tile_size:      512              # ← resize to 512x512
   num_classes:    4                # ← we collapse xBD's 5 → 4
   sar_channels:   3 
 
@@ -28,20 +28,20 @@ augmentation:
   horizontal_flip_p: 0.5
   vertical_flip_p: 0.5
   rotate_90_p: 0.5
-  random_brightness_contrast_p: 0.3
-  # gaussian_noise_p: 0.2 
-  elastic_transform_p: 0.2
-  coarse_dropout_p: 0.2
+  random_brightness_contrast_p: 0.4      # Increased
+  gaussian_noise_p: 0.3                  # Added
+  elastic_transform_p: 0.3               # Increased
+  coarse_dropout_p: 0.3                  # Increased
 
 model:
-  dropout_p: 0.1
+  dropout_p: 0.2                         # Increased from 0.1
 
 training:
   epochs: 500
-  batch_size: 4
+  batch_size: 2                          # Reduced from 4 for better gradient variance
   num_workers:  4
   learning_rate: 1.0e-3
-  weight_decay: 1.0e-2
+  weight_decay: 5.0e-3                   # Reduced (was too aggressive at 1e-2)
   min_lr: 1.0e-6
   patience: 100
   checkpoint_dir: "checkpoints/xview2"

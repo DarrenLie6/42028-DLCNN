@@ -86,6 +86,11 @@ class XViewDataset(Dataset):
             lbl_dir / f"{stem}_post_disaster.json", h, w
         )
 
+        # ── Resize to standard tile size ──────────────────────────────
+        if post.shape[0] != self.tile_size or post.shape[1] != self.tile_size:
+            post = cv2.resize(post, (self.tile_size, self.tile_size), interpolation=cv2.INTER_LINEAR)
+            label = cv2.resize(label, (self.tile_size, self.tile_size), interpolation=cv2.INTER_NEAREST)
+
         # ── Augmentation ──────────────────────────────────────────────
         if self.transform:
             # For SimpleUNet, we only augment the post-disaster image

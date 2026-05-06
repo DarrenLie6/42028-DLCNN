@@ -23,7 +23,9 @@ Training and validation loop for SimpleUNet.
 NUM_CLASSES   = 4
 IGNORE_INDEX  = -100
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-CLASS_WEIGHTS = [0.5, 1.0, 7.8, 20.0]  # Background now included with weight 0.5
+# Reduced from [0.5, 1.0, 7.8, 20.0] to moderate values
+# This prevents loss from being dominated by rare classes
+CLASS_WEIGHTS = [0.2, 1.0, 2.5, 5.0]  # Still emphasizes damage but less extreme
 
 class Trainer:
     """Encapsulate the full training loop for SimpleUNet"""
