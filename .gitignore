@@ -4,3 +4,4 @@
 
 # ignore the checkpoints
 /checkpoints/UNet.pth
+/checkpoints/xview2/UNet.pth

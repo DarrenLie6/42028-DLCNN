@@ -28,11 +28,8 @@ def build_train_aug(cfg) -> A.Compose:
         A.Compose:  Albumentations composition with the configured augmentations.
         Supports SAR (Synthetic Aperture Radar) images as additional targets.
     """
-    tile_size = cfg.data.tile_size 
-    
     aug = cfg.augmentation
     return A.Compose([
-        A.Resize(tile_size, tile_size, interpolation=0),  # INTER_NEAREST for semantic masks
         A.HorizontalFlip(p=aug.horizontal_flip_p),
         A.VerticalFlip(p=aug.vertical_flip_p),
         A.RandomRotate90(p=aug.rotate_90_p),
@@ -45,12 +42,8 @@ def build_train_aug(cfg) -> A.Compose:
             hole_width_range=(8, 32),
             p=aug.coarse_dropout_p,
         ),
-    ], additional_targets={"sar": "image"}, is_check_shapes=False)
+    ], is_check_shapes=False)
     
 def build_val_aug(cfg) -> A.Compose:
-    """A wrapper to pass the SAR image type"""
-    tile_size = 256 if cfg is None else cfg.data.tile_size
-    
-    return  A.Compose([
-         A.Resize(tile_size, tile_size, interpolation=0)  # INTER_NEAREST for semantic masks
-        ], additional_targets={"sar": "image"})
+    """Validation augmentation — no resize, keep original tile sizes"""
+    return A.Compose([], is_check_shapes=False)

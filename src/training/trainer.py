@@ -10,7 +10,7 @@ from src.training.metrics import SegmentationMetrics
 from src.training.losses  import CombinedLoss
 
 """
-Training and validation loop for BRIGHT Siamese UNet.
+Training and validation loop for SimpleUNet.
 
   - AdamW optimizer
   - CosineAnnealingLR scheduler
@@ -26,7 +26,7 @@ LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
 CLASS_WEIGHTS = [0.5, 1.0, 7.8, 20.0]  # Background now included with weight 0.5
 
 class Trainer:
-    """Encapsulate the full training loop for the Siamese UNet"""
+    """Encapsulate the full training loop for SimpleUNet"""
     
     def __init__(self,
         model: nn.Module,
@@ -153,7 +153,7 @@ class Trainer:
 
         # ── Figure 1: Training Curves ──────────────────────────────────────────
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-        fig.suptitle("Training Curves — BRIGHT Siamese UNet", fontsize=14)
+        fig.suptitle("Training Curves — SimpleUNet", fontsize=14)
 
         # Loss
         axes[0].plot(epochs, [r["train/loss"] for r in self.history], label="Train")
@@ -200,17 +200,13 @@ class Trainer:
             self.model.eval()
             with torch.no_grad():
                 for batch in self.val_loader:
-                    optical       = batch["optical"].to(self.device)
-                    sar           = batch["sar"].to(self.device)
-                    targets       = batch["label"].to(self.device)
-                    optical_valid = batch.get("optical_valid", None)
-                    if optical_valid is not None:
-                        optical_valid = optical_valid.to(self.device)
+                    image   = batch["image"].to(self.device)
+                    targets = batch["label"].to(self.device)
                     with autocast(
                         device_type=self.device.type,
                         enabled=self.device.type == "cuda"
                     ):
-                        logits = self.model(optical, sar, optical_valid)
+                        logits = self.model(image)
                     self.val_metrics.update(logits, targets)
             print(f" Val metrics rebuilt from best checkpoint")
         else:
@@ -273,16 +269,14 @@ class Trainer:
         )
 
         for batch in batch_bar:
-            optical = batch["optical"].to(self.device)      # (B,3,H,W)
-            sar = batch["sar"].to(self.device)              # (B,1,H,W)
-            targets = batch["label"].to(self.device)         # (B,H,W) long
-            optical_valid = batch["optical_valid"].to(self.device)  # (B,) bool
+            image = batch["image"].to(self.device)    # (B,3,H,W) — post-disaster
+            targets = batch["label"].to(self.device)  # (B,H,W) long
 
             self.optimizer.zero_grad()
 
             # Forward + loss under FP16
             with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
-                logits = self.model(optical, sar, optical_valid)  # (B,4,H,W)
+                logits = self.model(image)  # (B,4,H,W)
                 loss, ce_loss, dice_loss = self.criterion(logits, targets)
 
             # Backward propagation with gradient scaling
@@ -344,16 +338,11 @@ class Trainer:
         )
 
         for batch in val_batch_bar:
-            optical = batch["optical"].to(self.device)
-            sar = batch["sar"].to(self.device)
-            targets = batch["label"].to(self.device)
-            optical_valid = batch.get("optical_valid", None)
-
-            if optical_valid is not None:
-                optical_valid = optical_valid.to(self.device)
+            image = batch["image"].to(self.device)    # (B,3,H,W) — post-disaster
+            targets = batch["label"].to(self.device)  # (B,H,W) long
 
             with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
-                logits = self.model(optical, sar, optical_valid)
+                logits = self.model(image)
                 loss, ce_loss, dice_loss = self.criterion(logits, targets)
                 
             # ── DEBUG: add these lines temporarily ────────────────
@@ -363,8 +352,7 @@ class Trainer:
                 print(f"  dice_loss = {dice_loss.item()}")
                 print(f"  logits    min={logits.min().item():.4f} max={logits.max().item():.4f} nan={torch.isnan(logits).any()}")
                 print(f"  targets   min={targets.min().item()} max={targets.max().item()} nan={torch.isnan(targets.float()).any()}")
-                print(f"  optical   min={optical.min().item():.4f} max={optical.max().item():.4f} nan={torch.isnan(optical).any()}")
-                print(f"  sar       min={sar.min().item():.4f} max={sar.max().item():.4f} nan={torch.isnan(sar).any()}")
+                print(f"  image     min={image.min().item():.4f} max={image.max().item():.4f} nan={torch.isnan(image).any()}")
                 break
              
             total_loss += loss.item()

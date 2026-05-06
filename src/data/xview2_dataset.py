@@ -76,43 +76,30 @@ class XViewDataset(Dataset):
         img_dir = self.root / folder / "images"
         lbl_dir = self.root / folder / "labels"
 
-        # ── Load pre + post optical (RGB) ─────────────────────────────
-        pre_path  = self._find_image(img_dir, f"{stem}_pre_disaster")
+        # ── Load post-disaster image (RGB only) ───────────────────────
         post_path = self._find_image(img_dir, f"{stem}_post_disaster")
-        
-        pre  = self._load_image(pre_path)
         post = self._load_image(post_path)
 
         # ── Load + rasterise label ────────────────────────────────────
-        h, w  = pre.shape[:2]
+        h, w  = post.shape[:2]
         label = self._rasterise_label(
             lbl_dir / f"{stem}_post_disaster.json", h, w
         )
-        
-        # unique, counts = np.unique(label, return_counts=True)
-        # if idx < 5:
-        #     print(f"[DEBUG] stem={stem} | label classes={dict(zip(unique.tolist(), counts.tolist()))}")
 
         # ── Augmentation ──────────────────────────────────────────────
         if self.transform:
-            r     = self.transform(image=pre, sar=post, mask=label)
-            pre   = r["image"]
-            post  = r["sar"]
+            # For SimpleUNet, we only augment the post-disaster image
+            r     = self.transform(image=post, mask=label)
+            post  = r["image"]
             label = r["mask"]
 
         # ── To tensors ────────────────────────────────────────────────
-        pre_t  = torch.from_numpy(pre.transpose(2, 0, 1)).float()
         post_t = torch.from_numpy(post.transpose(2, 0, 1)).float()
-        
-        # optical_t = torch.cat([pre_t, post_t], dim=0) 
-        # sar_t = (0.299 * post_t[0] + 0.587 * post_t[1] + 0.114 * post_t[2]).unsqueeze(0)  
 
         return {
-            "optical":       pre_t,
-            "sar":           post_t,
-            "optical_valid": torch.tensor(True, dtype=torch.bool),
-            "label":         torch.from_numpy(label).long(),
-            "stem":          stem,
+            "image": post_t,
+            "label": torch.from_numpy(label).long(),
+            "stem":  stem,
         }
 
     # ── Helpers ───────────────────────────────────────────────────────

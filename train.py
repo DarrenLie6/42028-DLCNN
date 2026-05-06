@@ -11,7 +11,7 @@ import yaml
 import warnings
 
 from src.data.dataloader import get_dataloaders
-from src.models.siamese_unet import SiameseUNet
+from src.models.simple_unet import UNet
 from src.training.trainer import Trainer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -71,10 +71,9 @@ def get_device() -> torch.device:
 #     print(f" Model params: {n_params / 1e6:.2f}M")
 #     return model
 def build_model(cfg) -> torch.nn.Module:
-    model = SiameseUNet(
+    model = UNet(
         num_classes = cfg.data.num_classes,
         dropout_p   = cfg.model.dropout_p,
-        dataset     = getattr(cfg.data, "dataset", "bright"),  # ← pass dataset
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model params: {n_params / 1e6:.2f}M")
@@ -111,7 +110,7 @@ def main():
     t      = cfg.training
 
     print(f"\n{'='*60}")
-    print(f"  BRIGHT Disaster Assessment — Siamese UNet")
+    print(f"  Disaster Assessment — SimpleUNet (Post-Disaster Only)")
     print(f"  Config  : {args.config}")
     print(f"  Device  : {device}")
     print(f"  Epochs  : {t.epochs}")
