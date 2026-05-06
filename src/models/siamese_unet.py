@@ -2,8 +2,8 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .encoder import ResNetEncoder
-from .decoder import DecoderBlock, DoubleConv
+from models.encoder import ResNetEncoder
+from models.decoder import DecoderBlock, DoubleConv
 
 """Siamese UNet
     - dual encoder branches with ResNet50 weights
