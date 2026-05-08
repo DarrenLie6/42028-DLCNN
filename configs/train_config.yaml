@@ -1,7 +1,7 @@
 # configs/train_config.yaml
 
 data:
-  root_dir: "data/bright"
+  root_dir: "E:/UTS/CNN and Deep Learning/Assignment 3/42028-DLCNN/data/xView2/geotiffs"
   pre_event_dir: "pre-event"
   post_event_dir: "post-event"
   target_dir: "target"
@@ -9,18 +9,17 @@ data:
   train_split: "train_set.txt"
   val_split: "val_set.txt"
   test_split: "test_set.txt"
-  num_classes: 4
+  num_classes: 5
   tile_size: 512
-  optical_mean: [0.358, 0.342, 0.309]
-  optical_std: [0.206, 0.178, 0.163]
-  sar_mean: [0.2243]
-  sar_std: [0.1477]
+  # optical_mean: [0.358, 0.342, 0.309]
+  # optical_std: [0.206, 0.178, 0.163]
 
 augmentation:
   horizontal_flip_p: 0.5
   vertical_flip_p: 0.5
   rotate_90_p: 0.5
   random_brightness_contrast_p: 0.3
+  # gaussian_noise_p: 0.2 
   elastic_transform_p: 0.2
   coarse_dropout_p: 0.2
 
@@ -30,11 +29,11 @@ model:
   decoder_channels: [256, 128, 64, 32]
 
 training:
-  epochs: 50
+  epochs: 150
   batch_size: 4
   num_workers:  4
-  learning_rate: 3.0e-5
+  learning_rate: 1.0e-4
   weight_decay: 1.0e-4
   min_lr: 1.0e-6
-  patience: 10
+  patience: 15
   checkpoint_dir: "checkpoints"

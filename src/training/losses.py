@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
-    def __init__(self, num_classes: int, ignore_index: int = 0, eps: float = 1e-6):
+    def __init__(self, num_classes: int, ignore_index: int = None, eps: float = 1e-6):
         super().__init__()
         self.num_classes  = num_classes
         self.ignore_index = ignore_index
@@ -23,18 +23,24 @@ class DiceLoss(nn.Module):
         count = 0
 
         for cls in range(self.num_classes):
-            if cls == self.ignore_index:
+            if self.ignore_index is not None and cls == self.ignore_index:
                 continue
             p    = probs[:, cls]                              # (B, H, W)
             g    = (targets == cls).float()
-            mask = (targets != self.ignore_index).float()
+            
+            # Apply mask only if ignore_index is specified
+            if self.ignore_index is not None:
+                mask = (targets != self.ignore_index).float()
+            else:
+                mask = torch.ones_like(targets).float()
+                
             p, g = p * mask, g * mask
             intersection = (p * g).sum()
             denominator  = p.sum() + g.sum() + self.eps
             loss  += 1.0 - 2.0 * intersection / denominator
             count += 1
 
-        return loss / count
+        return loss / count if count > 0 else torch.tensor(0.0, device=logits.device)
 
 
 class CombinedLoss(nn.Module):
@@ -69,21 +75,25 @@ class CombinedLoss(nn.Module):
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> tuple:
         # reduction="sum" so we control averaging manually
-        ce_loss = F.cross_entropy(
-            logits, targets,
-            weight       = self.weights,
-            ignore_index = self.ignore_index,
-            reduction    = "sum",
-        )
+        ce_kwargs = {
+            "weight": self.weights,
+            "reduction": "mean",
+            "label_smoothing": 0.1
+        }
+        
+        # Only add ignore_index if it's not None
+        if self.ignore_index is not None:
+            ce_kwargs["ignore_index"] = self.ignore_index
+            
+        ce_loss = F.cross_entropy(logits, targets, **ce_kwargs)
 
-        # Count valid (non-background) pixels
-        valid_pixels = (targets != self.ignore_index).sum().float()
-
-        # Guard against all-background batch → CE would be NaN otherwise
-        if valid_pixels > 0:
-            ce_loss = ce_loss / valid_pixels
-        else:
-            ce_loss = torch.tensor(0.0, device=logits.device, requires_grad=True)
+        # Count valid pixels (only if ignore_index is specified)
+        if self.ignore_index is not None:
+            valid_pixels = (targets != self.ignore_index).sum().float()
+            if valid_pixels > 0:
+                ce_loss = ce_loss / valid_pixels
+            else:
+                ce_loss = torch.tensor(0.0, device=logits.device, requires_grad=True)
 
         dice_loss = self.dice(logits, targets)
         total     = self.ce_w * ce_loss + self.dice_w * dice_loss

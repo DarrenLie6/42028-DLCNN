@@ -5,10 +5,11 @@ import torch.nn as nn
 from .encoder import ResNetEncoder
 from .decoder import DecoderBlock, DoubleConv
 
-"""Siamese UNet
-    - dual encoder branches with ResNet50 weights
-    - featurs fused by concatanation at each scale
-    - UNet decoder outputs 4 class segmentation map
+"""Siamese UNet - Optical-Optical Architecture
+    - dual encoder branches with ResNet50 weights  
+    - both branches process optical (RGB) imagery
+    - features fused by concatanation at each scale
+    - UNet decoder outputs 4 class segmentation map (damage levels)
 """
 
 class SiameseUNet(nn.Module):
@@ -20,8 +21,11 @@ class SiameseUNet(nn.Module):
         # each skip with pre features post feature to double the channels
         enc_ch = self.encoder.out_channels # [64, 256, 512, 1024, 2048]
         
-        # bottleneck fusion: conacat pre + post > 2048*2
-        self.bottleneck_conv = DoubleConv(enc_ch[4] *  2, 1024)
+        # bottleneck fusion: concat pre + post > 2048*2
+        self.bottleneck_conv = nn.Sequential(
+            DoubleConv(enc_ch[4] * 2, 1024),
+            nn.Dropout2d(p=0.3)
+            )
         
         # decoder blocks 
         # skp_ch  = pre channels + post channels 
@@ -43,36 +47,38 @@ class SiameseUNet(nn.Module):
         )
         
     def forward(
-        self, optical: torch.Tensor, # (B, 3, H, W)
-        sar: torch.Tensor, # (B, 1, H, W)
-        optical_valid: torch.Tensor
+        self, 
+        pre_disaster: torch.Tensor,    # (B, 3, H, W) - pre-disaster optical
+        post_disaster: torch.Tensor    # (B, 3, H, W) - post-disaster optical
     ) -> torch.Tensor:
+        """
+        Args:
+            pre_disaster: (B, 3, H, W) - pre-disaster optical image
+            post_disaster: (B, 3, H, W) - post-disaster optical image
+            
+        Returns:
+            (B, num_classes, H, W) - damage segmentation map
+        """
         
-        # encodes the both branches
-        feats_opt = self.encoder(optical, modality="optical")
-        feats_sar = self.encoder(sar, modality="sar")
-        
-        # gate optical features where modality is missing
-        # optical_valid: (B,) > (B, 1, 1, 1) for broadcasting
-        mask = optical_valid.float().view(-1, 1, 1, 1)
-        feats_opt = [f * mask for f in feats_opt]
+        # encode both optical branches through shared encoder
+        feats_pre = self.encoder(pre_disaster)
+        feats_post = self.encoder(post_disaster)
         
         # fuse the bottleneck
-        bottleneck = torch.cat([feats_opt[4], feats_sar[4]], dim=1) #2048 * 2
+        bottleneck = torch.cat([feats_pre[4], feats_post[4]], dim=1) # 2048 * 2
         x = self.bottleneck_conv(bottleneck)
         
         # decode with skip connections
-        # each skip = concat(prescale, post scale)
-        skip4 = torch.cat([feats_opt[3], feats_sar[3]], dim=1)
-        skip3 = torch.cat([feats_opt[2], feats_sar[2]], dim=1)
-        skip2 = torch.cat([feats_opt[1], feats_sar[1]], dim=1)
-        skip1 = torch.cat([feats_opt[0], feats_sar[0]], dim=1)
+        # each skip = concat(pre, post)
+        skip4 = torch.cat([feats_pre[3], feats_post[3]], dim=1)
+        skip3 = torch.cat([feats_pre[2], feats_post[2]], dim=1)
+        skip2 = torch.cat([feats_pre[1], feats_post[1]], dim=1)
+        skip1 = torch.cat([feats_pre[0], feats_post[0]], dim=1)
         
         x = self.dec4(x, skip4) #512ch, H/16
         x = self.dec3(x, skip3) #256ch, H/8
         x = self.dec2(x, skip2) #128ch, H/4
         x = self.dec1(x, skip1) #64ch, H/2
         x = self.final_upsample(x) #64ch, H
-        
                 
         return self.head(x)

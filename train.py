@@ -122,12 +122,16 @@ def main():
     )
 
     # resume 
+    start_epoch = 1
     if args.resume:
-        start_epoch = trainer.load_checkpoint(args.resume)
-        print(f" Resuming from epoch {start_epoch + 1}")
+        start_epoch = trainer.load_checkpoint(args.resume) + 1
+        print(f" Resuming from epoch {start_epoch}")
 
     # train
-    history = trainer.fit()
+    history = trainer.fit(start_epoch=start_epoch)
+    
+    # plot curves and cm
+    trainer.plot_history(save_dir=cfg.training.checkpoint_dir)
 
     # final summary
     best = max(history, key=lambda x: x["mean_iou"])

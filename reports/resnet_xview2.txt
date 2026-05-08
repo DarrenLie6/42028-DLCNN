@@ -1,0 +1,61 @@
+  BRIGHT Disaster Assessment — Siamese UNet
+  Config  : configs/train_config.yaml
+  Device  : cuda
+  Epochs  : 50
+  Batch   : 4
+  LR      : 0.0001
+============================================================
+
+[XBDDataset] mode=train | 9168 tiles from ['tier1', 'tier3']
+[XBDDataset] mode=val | 933 tiles from ['hold']
+[XBDDataset] mode=test | 933 tiles from ['test']
+[get_dataloaders] train=9168 val=933 tiles
+ Model params: 92.58M
+Epoch 001 | lr=9.99e-05 | train loss=1.0576 mIoU=0.2173 | val loss=1.0361 mIoU=0.2228 | 736.6s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2228)
+Epoch 002 | lr=9.96e-05 | train loss=0.9892 mIoU=0.2653 | val loss=0.9865 mIoU=0.2418 | 761.5s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2418)
+Epoch 003 | lr=9.91e-05 | train loss=0.9840 mIoU=0.2794 | val loss=0.9989 mIoU=0.2237 | 827.0s                                                                          
+Epoch 004 | lr=9.84e-05 | train loss=0.9782 mIoU=0.2885 | val loss=0.9855 mIoU=0.2390 | 882.9s                                                                          
+Epoch 005 | lr=9.76e-05 | train loss=0.9769 mIoU=0.2994 | val loss=1.0066 mIoU=0.2573 | 812.9s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2573)
+Epoch 006 | lr=9.65e-05 | train loss=0.9735 mIoU=0.3128 | val loss=0.9916 mIoU=0.2677 | 797.9s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2677)
+Epoch 007 | lr=9.53e-05 | train loss=0.9709 mIoU=0.3256 | val loss=0.9799 mIoU=0.2856 | 810.1s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2856)
+Epoch 008 | lr=9.39e-05 | train loss=0.9690 mIoU=0.3344 | val loss=0.9932 mIoU=0.2728 | 838.9s                                                                          
+Epoch 009 | lr=9.23e-05 | train loss=0.9682 mIoU=0.3381 | val loss=0.9942 mIoU=0.2599 | 823.5s                                                                          
+Epoch 010 | lr=9.05e-05 | train loss=0.9666 mIoU=0.3434 | val loss=0.9926 mIoU=0.2768 | 866.0s                                                                          
+Epoch 011 | lr=8.86e-05 | train loss=0.9665 mIoU=0.3485 | val loss=0.9954 mIoU=0.2570 | 814.9s                                                                          
+Epoch 012 | lr=8.66e-05 | train loss=0.9626 mIoU=0.3568 | val loss=0.9921 mIoU=0.2573 | 812.3s                                                                          
+Epoch 013 | lr=8.44e-05 | train loss=0.9631 mIoU=0.3578 | val loss=0.9900 mIoU=0.2657 | 811.3s                                                                          
+Epoch 014 | lr=8.21e-05 | train loss=0.9590 mIoU=0.3674 | val loss=0.9947 mIoU=0.2622 | 812.6s                                                                          
+Epoch 015 | lr=7.96e-05 | train loss=0.9616 mIoU=0.3627 | val loss=0.9943 mIoU=0.2634 | 810.3s                                                                          
+Epoch 016 | lr=7.70e-05 | train loss=0.9592 mIoU=0.3709 | val loss=0.9919 mIoU=0.2683 | 812.0s                                                                          
+Epoch 017 | lr=7.43e-05 | train loss=0.9575 mIoU=0.3735 | val loss=0.9892 mIoU=0.2685 | 818.8s                                                                          
+Epoch 018 | lr=7.16e-05 | train loss=0.9556 mIoU=0.3794 | val loss=0.9889 mIoU=0.2857 | 830.2s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2857)
+Epoch 019 | lr=6.87e-05 | train loss=0.9551 mIoU=0.3830 | val loss=0.9940 mIoU=0.2790 | 828.4s                                                                          
+Epoch 020 | lr=6.58e-05 | train loss=0.9549 mIoU=0.3828 | val loss=0.9863 mIoU=0.2841 | 831.8s                                                                          
+Epoch 021 | lr=6.28e-05 | train loss=0.9539 mIoU=0.3865 | val loss=0.9872 mIoU=0.2842 | 830.5s                                                                          
+Epoch 022 | lr=5.98e-05 | train loss=0.9531 mIoU=0.3867 | val loss=0.9980 mIoU=0.2657 | 827.4s                                                                          
+Epoch 023 | lr=5.67e-05 | train loss=0.9510 mIoU=0.3955 | val loss=0.9844 mIoU=0.2866 | 833.6s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2866)
+Epoch 024 | lr=5.36e-05 | train loss=0.9487 mIoU=0.4026 | val loss=0.9899 mIoU=0.2968 | 834.6s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.2968)
+Epoch 025 | lr=5.05e-05 | train loss=0.9492 mIoU=0.3981 | val loss=0.9844 mIoU=0.2949 | 833.2s                                                                          
+Epoch 026 | lr=4.74e-05 | train loss=0.9481 mIoU=0.3978 | val loss=0.9836 mIoU=0.2908 | 832.1s                                                                          
+Epoch 027 | lr=4.43e-05 | train loss=0.9475 mIoU=0.4013 | val loss=0.9883 mIoU=0.2886 | 832.1s                                                                          
+Epoch 028 | lr=4.12e-05 | train loss=0.9458 mIoU=0.4143 | val loss=0.9805 mIoU=0.3078 | 829.5s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3078)
+Epoch 029 | lr=3.82e-05 | train loss=0.9461 mIoU=0.4066 | val loss=0.9778 mIoU=0.3137 | 832.6s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3137)
+Epoch 030 | lr=3.52e-05 | train loss=0.9476 mIoU=0.4049 | val loss=0.9788 mIoU=0.3126 | 836.4s                                                                          
+Epoch 031 | lr=3.23e-05 | train loss=0.9441 mIoU=0.4116 | val loss=0.9833 mIoU=0.3020 | 834.1s                                                                          
+Epoch 032 | lr=2.94e-05 | train loss=0.9439 mIoU=0.4179 | val loss=0.9805 mIoU=0.3119 | 829.1s                                                                          
+Epoch 033 | lr=2.67e-05 | train loss=0.9435 mIoU=0.4142 | val loss=0.9806 mIoU=0.3045 | 833.6s                                                                          
+Epoch 034 | lr=2.40e-05 | train loss=0.9441 mIoU=0.4131 | val loss=0.9766 mIoU=0.3212 | 814.5s                                                                          
+ Checkpoint saved → checkpoints\UNet.pth  (val mean_iou=0.3212)
+Epoch 035 | lr=2.14e-05 | train loss=0.9414 mIoU=0.4198 | val loss=0.9806 mIoU=0.3091 | 826.5s                                                                          
+Epoch 036 | lr=1.89e-05 | train loss=0.9414 mIoU=0.4221 | val loss=0.9786 mIoU=0.3130 | 824.7s                                                                          
+Epoch 037 | lr=1.66e-05 | train loss=0.9410 mIoU=0.4253 | val loss=0.9783 mIoU=0.3121 | 788.7s 
