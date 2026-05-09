@@ -6,10 +6,10 @@ from .encoder import ResNetEncoder
 from .decoder import DecoderBlock, DoubleConv
 
 """Siamese UNet - Optical-Optical Architecture
-    - dual encoder branches with ResNet50 weights  
+    - dual encoder branches with ResNet34 weights  
     - both branches process optical (RGB) imagery
     - features fused by concatanation at each scale
-    - UNet decoder outputs 4 class segmentation map (damage levels)
+    - UNet decoder outputs 5 class segmentation map (damage levels)
 """
 
 class SiameseUNet(nn.Module):
@@ -19,20 +19,20 @@ class SiameseUNet(nn.Module):
         self.encoder = ResNetEncoder(pretrained=pretrained)
         
         # each skip with pre features post feature to double the channels
-        enc_ch = self.encoder.out_channels # [64, 256, 512, 1024, 2048]
+        enc_ch = self.encoder.out_channels # [64, 64, 128, 256, 512] for ResNet34
         
-        # bottleneck fusion: concat pre + post > 2048*2
+        # bottleneck fusion: concat pre + post > 512*2 = 1024
         self.bottleneck_conv = nn.Sequential(
-            DoubleConv(enc_ch[4] * 2, 1024),
+            DoubleConv(enc_ch[4] * 2, 512),
             nn.Dropout2d(p=0.3)
             )
         
         # decoder blocks 
         # skp_ch  = pre channels + post channels 
-        self.dec4 = DecoderBlock(1024, enc_ch[3] * 2, 512)
-        self.dec3 = DecoderBlock(512, enc_ch[2] * 2, 256)
-        self.dec2 = DecoderBlock(256, enc_ch[1] * 2, 128)
-        self.dec1 = DecoderBlock(128, enc_ch[0] * 2, 64)
+        self.dec4 = DecoderBlock(512, enc_ch[3] * 2, 256)
+        self.dec3 = DecoderBlock(256, enc_ch[2] * 2, 128)
+        self.dec2 = DecoderBlock(128, enc_ch[1] * 2, 64)
+        self.dec1 = DecoderBlock(64, enc_ch[0] * 2, 32)
         
         # final upsample x2 back to original resolutioin + classification head
         self.final_upsample = nn.Upsample(
@@ -40,7 +40,7 @@ class SiameseUNet(nn.Module):
         )
         
         self.head = nn.Sequential(
-            nn.Conv2d(64, 32, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, num_classes, kernel_size=1)
@@ -65,7 +65,7 @@ class SiameseUNet(nn.Module):
         feats_post = self.encoder(post_disaster)
         
         # fuse the bottleneck
-        bottleneck = torch.cat([feats_pre[4], feats_post[4]], dim=1) # 2048 * 2
+        bottleneck = torch.cat([feats_pre[4], feats_post[4]], dim=1) # 512 * 2 = 1024 (ResNet34)
         x = self.bottleneck_conv(bottleneck)
         
         # decode with skip connections

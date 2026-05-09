@@ -122,13 +122,10 @@ class XViewDataset(Dataset):
 
         # ── Augmentation ──────────────────────────────────────────────
         if self.transform:
-            # Augment both pre and post images with the same transformation
-            r_pre = self.transform(image=pre, mask=label)
-            pre = r_pre["image"]
-            label = r_pre["mask"]
-            
-            r_post = self.transform(image=post)
-            post = r_post["image"]
+            r     = self.transform(image=pre, post=post, mask=label)
+            pre   = r["image"]
+            post  = r["post"]
+            label = r["mask"]
 
         # ── To tensors ────────────────────────────────────────────────
         pre_t = torch.from_numpy(pre.transpose(2, 0, 1)).float()
