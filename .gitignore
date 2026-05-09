@@ -5,3 +5,14 @@
 # ignore the checkpoints
 /checkpoints/UNet.pth
 /checkpoints/xview2/UNet.pth
+# SAM2 cloned repo
+sam2/checkpoints/
+sam2/.git/
+
+# Notebook checkpoints
+**/.ipynb_checkpoints/
+
+# SAM2 build artifacts
+sam2/*.egg-info/
+sam2/*
+!sam2/sam2_damage_classifier.ipynb
