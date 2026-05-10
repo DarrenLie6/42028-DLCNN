@@ -11,7 +11,7 @@ import yaml
 import warnings
 
 from src.data.dataloader import get_dataloaders
-from src.models.simple_unet import UNet
+from src.models.attention_unet import AttentionUNet
 from src.training.trainer import Trainer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -71,7 +71,7 @@ def get_device() -> torch.device:
 #     print(f" Model params: {n_params / 1e6:.2f}M")
 #     return model
 def build_model(cfg) -> torch.nn.Module:
-    model = UNet(
+    model = AttentionUNet(
         num_classes = cfg.data.num_classes,
         dropout_p   = cfg.model.dropout_p,
     )

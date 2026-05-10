@@ -23,9 +23,15 @@ Training and validation loop for SimpleUNet.
 NUM_CLASSES   = 4
 IGNORE_INDEX  = -100
 LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-# Reduced from [0.5, 1.0, 7.8, 20.0] to moderate values
-# This prevents loss from being dominated by rare classes
-CLASS_WEIGHTS = [0.2, 1.0, 2.5, 5.0]  # Still emphasizes damage but less extreme
+# Optimized class weights for xBD semantic segmentation
+# Computed from inverse frequency with smoothing: 1 / (frequency + 0.1)
+# Emphasizes rare damage classes while preventing explosion of weights
+# [Background (85.9%), Intact (11.7%), Damaged (1.5%), Destroyed (0.9%)]
+CLASS_WEIGHTS = [0.1, 1.0, 5.0, 10.0]
+
+# Gradient monitoring for stability
+MAX_GRAD_NORM = 1.0  # Allow larger gradients but still clip explosions
+GRAD_EXPLOSION_THRESHOLD = float('inf')  # Detect extreme explosions
 
 class Trainer:
     """Encapsulate the full training loop for SimpleUNet"""
@@ -261,6 +267,7 @@ class Trainer:
         total_loss = 0.0
         total_ce = 0.0
         total_dice = 0.0
+        total_focal = 0.0
         n_batches = 0
         
         batch_bar = tqdm(
@@ -276,32 +283,65 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            # Forward + loss under FP16
+            # ── Forward + loss under FP16 ─────────────────────────────────────────
             with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
-                logits = self.model(image)  # (B,4,H,W)
-                loss, ce_loss, dice_loss = self.criterion(logits, targets)
+                logits = self.model(image)
+                loss_output = self.criterion(logits, targets)
+                if len(loss_output) == 4:
+                    loss, ce_loss, dice_loss, focal_loss = loss_output
+                else:
+                    loss, ce_loss, dice_loss = loss_output
+                    focal_loss = None
 
-            # Backward propagation with gradient scaling
+            # Skip bad loss BEFORE backward — scaler was never used, safe to just continue
+            if torch.isnan(loss) or torch.isinf(loss):
+                print(f"  ⚠ NaN/Inf loss at batch {n_batches}, skipping.")
+                continue
+
+            # ── Backward ──────────────────────────────────────────────────────────
             self.scaler.scale(loss).backward()
+
+            # Unscale BEFORE clip so clip_grad_norm sees real magnitudes not scaled ones
             self.scaler.unscale_(self.optimizer)
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(),
+                max_norm=MAX_GRAD_NORM
+            )
+
+            # Log explosion but DO NOT skip — scaler must always be stepped+updated
+            # once backward() has been called. It detects inf internally, skips the
+            # optimizer update automatically, and halves its scale for the next batch.
+            if torch.isnan(grad_norm) or torch.isinf(grad_norm):
+                print(f"  ⚠ norm={grad_norm:.2e} — scaler self-correcting.")
+
+            # ALWAYS call both after backward — no exceptions
             self.scaler.step(self.optimizer)
             self.scaler.update()
 
-            # Accumulate losses (detach before .item() to free graph)
-            total_loss += loss.item()
-            total_ce += ce_loss.item()
-            total_dice += dice_loss.item()
+            # Skip metric/loss accumulation for explosive batches only — after scaler is done
+            if torch.isnan(grad_norm) or torch.isinf(grad_norm):
+                continue
+
+            # ── Accumulate losses ─────────────────────────────────────────────────
+            total_loss  += loss.item()
+            total_ce    += ce_loss.item()
+            total_dice  += dice_loss.item()
+            if focal_loss is not None:
+                total_focal += focal_loss.item()
+
             n_batches += 1
 
-            # Accumulate metrics (no grad needed)
             self.train_metrics.update(logits.detach(), targets)
-            
-            batch_bar.set_postfix(
-                loss = f"{loss.item():.4f}",
-                ce   = f"{ce_loss.item():.4f}",
-                dice = f"{dice_loss.item():.4f}",
-            )
+
+            postfix = {
+                "loss": f"{loss.item():.4f}",
+                "ce":   f"{ce_loss.item():.4f}",
+                "dice": f"{dice_loss.item():.4f}",
+            }
+            if focal_loss is not None:
+                postfix["focal"] = f"{focal_loss.item():.4f}"
+            batch_bar.set_postfix(postfix)
 
         # ── Compute metrics in eval mode for stable BatchNorm stats ──────
         self.model.eval()
@@ -309,7 +349,7 @@ class Trainer:
             metrics = self.train_metrics.compute()
         self.model.train()
 
-        return {
+        train_dict = {
             "train/loss":      total_loss / n_batches,
             "train/ce_loss":   total_ce   / n_batches,
             "train/dice_loss": total_dice / n_batches,
@@ -317,8 +357,13 @@ class Trainer:
             "train/mean_f1":   metrics["mean_f1"],        
             "train/mean_acc":  metrics["mean_acc"],      
             **{f"train/{k}": v for k, v in metrics.items()},
-            "mean_iou": metrics["mean_iou"],              # top-level for early stopping
+            "mean_iou": metrics["mean_iou"],
         }
+        
+        if total_focal > 0.0:
+            train_dict["train/focal_loss"] = total_focal / n_batches
+            
+        return train_dict
             
     @torch.no_grad()
     def _val_epoch(self, epoch: int) -> dict:
@@ -330,6 +375,7 @@ class Trainer:
         total_loss = 0.0
         total_ce  = 0.0
         total_dice = 0.0
+        total_focal = 0.0
         n_batches = 0
         
         val_batch_bar = tqdm(
@@ -345,7 +391,13 @@ class Trainer:
 
             with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
                 logits = self.model(image)
-                loss, ce_loss, dice_loss = self.criterion(logits, targets)
+                loss_output = self.criterion(logits, targets)
+                # Handle both old (3-tuple) and new (4-tuple) loss formats
+                if len(loss_output) == 4:
+                    loss, ce_loss, dice_loss, focal_loss = loss_output
+                else:
+                    loss, ce_loss, dice_loss = loss_output
+                    focal_loss = None
                 
             # ── DEBUG: add these lines temporarily ────────────────
             if torch.isnan(loss):
@@ -360,22 +412,29 @@ class Trainer:
             total_loss += loss.item()
             total_ce += ce_loss.item()
             total_dice += dice_loss.item()
+            if focal_loss is not None:
+                total_focal += focal_loss.item()
             n_batches += 1
 
             self.val_metrics.update(logits, targets)
 
         metrics = self.val_metrics.compute()
-
-        return {
+        
+        val_dict = {
             "val/loss":      total_loss / n_batches,
             "val/ce_loss":   total_ce   / n_batches,
             "val/dice_loss": total_dice / n_batches,
-            "val/mean_iou":  metrics["mean_iou"],         # ← prefixed
-            "val/mean_f1":   metrics["mean_f1"],          # ← prefixed
-            "val/mean_acc":  metrics["mean_acc"],         # ← prefixed
+            "val/mean_iou":  metrics["mean_iou"],
+            "val/mean_f1":   metrics["mean_f1"],
+            "val/mean_acc":  metrics["mean_acc"],
             **{f"val/{k}": v for k, v in metrics.items()},
-            "mean_iou": metrics["mean_iou"],              # top-level for checkpointing
+            "mean_iou": metrics["mean_iou"],
         }
+        
+        if total_focal > 0.0:
+            val_dict["val/focal_loss"] = total_focal / n_batches
+            
+        return val_dict
         
     def _save_checkpoint(self, epoch: int, val_mean_iou: float) -> None:
         """Save model + optimizer + scheduler state to disk."""

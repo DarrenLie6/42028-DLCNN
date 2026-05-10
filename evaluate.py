@@ -267,16 +267,27 @@ def evaluate(
     n_batches  = 0
 
     # ── Test loop ─────────────────────────────────────────────────────
+    dataset_type = getattr(cfg.data, "dataset", "bright").lower()
+    
     with torch.no_grad():
         for batch in test_loader:
-            optical       = batch["optical"].to(device)       # (B,6,H,W)
-            sar           = batch["sar"].to(device)           # (B,1,H,W)
-            targets       = batch["label"].to(device)         # (B,H,W) long
-            optical_valid = batch["optical_valid"].to(device) # (B,) bool
+            targets = batch["label"].to(device)  # (B,H,W) long
 
-            with autocast(device_type=device.type, enabled=device.type == "cuda"):
-                logits     = model(optical, sar, optical_valid)
-                loss, _, _ = criterion(logits, targets)
+            # Handle both xView2 (image-only) and BRIGHT (optical+SAR) datasets
+            if dataset_type == "xview":
+                # xView2 dataset: single post-disaster image
+                image  = batch["image"].to(device)  # (B,3,H,W)
+                with autocast(device_type=device.type, enabled=device.type == "cuda"):
+                    logits     = model(image)
+                    loss, _, _ = criterion(logits, targets)
+            else:
+                # BRIGHT dataset: optical + SAR
+                optical       = batch["optical"].to(device)       # (B,6,H,W)
+                sar           = batch["sar"].to(device)           # (B,1,H,W)
+                optical_valid = batch["optical_valid"].to(device) # (B,) bool
+                with autocast(device_type=device.type, enabled=device.type == "cuda"):
+                    logits     = model(optical, sar, optical_valid)
+                    loss, _, _ = criterion(logits, targets)
 
             total_loss += loss.item()
             n_batches  += 1
@@ -313,44 +324,75 @@ def evaluate(
         test_loader = test_loader,
         device      = device,
         save_dir    = str(SCRIPT_DIR / "checkpoints"),
-        n_samples   = 4,
+        n_samples   = 7,
+        cfg         = cfg,
     )
 
 
-def visualise_samples(model, test_loader, device, save_dir="checkpoints", n_samples=4):
+def visualise_samples(model, test_loader, device, save_dir="checkpoints", n_samples=4, cfg=None):
     model.eval()
     save_path = Path(save_dir) / "test_samples.png"
 
-    test_iter = iter(test_loader)
-    skip      = random.randint(0, min(20, len(test_loader) - 1))
-    for _ in range(skip + 1):
-        batch = next(test_iter)
-
-    optical       = batch["optical"].to(device)
-    sar           = batch["sar"].to(device)
-    optical_valid = batch["optical_valid"].to(device)
-    targets       = batch["label"]
-
-    # ── Detect whether optical is 3ch (pre only) or 6ch (pre+post) ───
-    n_opt_ch = optical.shape[1]
-    has_post = n_opt_ch == 6
-
-    with torch.no_grad():
-        with autocast(device_type=device.type, enabled=device.type == "cuda"):
-            logits = model(optical, sar, optical_valid)
-    preds = logits.argmax(dim=1).cpu()
-
+    dataset_type = getattr(cfg.data, "dataset", "bright").lower() if cfg else "bright"
     mean = np.array([0.485, 0.456, 0.406])
     std  = np.array([0.229, 0.224, 0.225])
 
-    n_cols = 5 if has_post else 4
-    n      = min(n_samples, optical.size(0))
-    titles = (
-        ["Pre (Optical)", "Post (Optical)", "SAR", "Ground Truth", "Prediction"]
-        if has_post else
-        ["Optical", "SAR", "Ground Truth", "Prediction"]
-    )
-
+    # ── Collect samples from multiple batches ──────────────────────
+    collected_images = []
+    collected_targets = []
+    collected_preds = []
+    
+    test_iter = iter(test_loader)
+    skip = random.randint(0, min(20, len(test_loader) - 1))
+    for _ in range(skip + 1):
+        batch = next(test_iter)
+    
+    while len(collected_images) < n_samples:
+        try:
+            targets = batch["label"]
+            
+            with torch.no_grad():
+                with autocast(device_type=device.type, enabled=device.type == "cuda"):
+                    if dataset_type == "xview":
+                        image  = batch["image"].to(device)  # (B,3,H,W)
+                        logits = model(image)
+                    else:
+                        optical       = batch["optical"].to(device)       # (B,6,H,W)
+                        sar           = batch["sar"].to(device)           # (B,1,H,W)
+                        optical_valid = batch["optical_valid"].to(device) # (B,) bool
+                        logits        = model(optical, sar, optical_valid)
+            
+            preds = logits.argmax(dim=1).cpu()
+            
+            # Store samples
+            batch_size = targets.size(0)
+            for i in range(batch_size):
+                if len(collected_images) < n_samples:
+                    collected_images.append(batch)
+                    collected_targets.append(targets[i])
+                    collected_preds.append(preds[i])
+            
+            # Try to get next batch
+            batch = next(test_iter)
+        except StopIteration:
+            break
+    
+    # Set dimensions based on dataset type
+    if dataset_type == "xview":
+        n_cols = 3
+        titles = ["Image", "Ground Truth", "Prediction"]
+    else:
+        n_opt_ch = collected_images[0]["optical"].shape[1]
+        has_post = n_opt_ch == 6
+        n_cols   = 5 if has_post else 4
+        titles   = (
+            ["Pre (Optical)", "Post (Optical)", "SAR", "Ground Truth", "Prediction"]
+            if has_post else
+            ["Optical", "SAR", "Ground Truth", "Prediction"]
+        )
+    
+    n = len(collected_targets)
+    
     fig, axes = plt.subplots(n, n_cols, figsize=(6 * n_cols, 4 * n))
     fig.suptitle("  |  ".join(titles), fontsize=13)
 
@@ -358,26 +400,37 @@ def visualise_samples(model, test_loader, device, save_dir="checkpoints", n_samp
         axes = axes[np.newaxis, :]
 
     for i in range(n):
+        batch = collected_images[i]
+        target = collected_targets[i]
+        pred = collected_preds[i]
         imgs = []
 
-        if has_post:
-            pre_img  = (optical[i, :3].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
-            post_img = (optical[i, 3:].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
-            imgs += [pre_img, post_img]
+        if dataset_type == "xview":
+            # xView2: single image
+            img_np = batch["image"][i % batch["image"].size(0)].cpu().permute(1,2,0).numpy()
+            img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-6)
+            imgs.append(img_np)
         else:
-            opt_img = (optical[i, :3].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
-            imgs += [opt_img]
+            # BRIGHT: optical (pre and/or post) + SAR
+            if has_post:
+                pre_img  = (batch["optical"][i % batch["optical"].size(0), :3].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
+                post_img = (batch["optical"][i % batch["optical"].size(0), 3:].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
+                imgs += [pre_img, post_img]
+            else:
+                opt_img = (batch["optical"][i % batch["optical"].size(0), :3].cpu().permute(1,2,0).numpy() * std + mean).clip(0,1)
+                imgs += [opt_img]
 
-        sar_img = sar[i].cpu().numpy()
-        if sar_img.ndim == 3:
-            sar_img = sar_img.transpose(1, 2, 0).squeeze()
-        else:
-            sar_img = sar_img.squeeze()
-        sar_img = (sar_img - sar_img.min()) / (sar_img.max() - sar_img.min() + 1e-6)
+            sar_img = batch["sar"][i % batch["sar"].size(0)].cpu().numpy()
+            if sar_img.ndim == 3:
+                sar_img = sar_img.transpose(1, 2, 0).squeeze()
+            else:
+                sar_img = sar_img.squeeze()
+            sar_img = (sar_img - sar_img.min()) / (sar_img.max() - sar_img.min() + 1e-6)
+            imgs.append(sar_img)
 
-        gt_rgb   = labels_to_rgb(targets[i].numpy())
-        pred_rgb = labels_to_rgb(preds[i].numpy())
-        imgs += [sar_img, gt_rgb, pred_rgb]
+        gt_rgb   = labels_to_rgb(target.numpy())
+        pred_rgb = labels_to_rgb(pred.numpy())
+        imgs += [gt_rgb, pred_rgb]
 
         for j, (img, title) in enumerate(zip(imgs, titles)):
             if title == "SAR":
