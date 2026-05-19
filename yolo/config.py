@@ -82,6 +82,15 @@ MODEL_NAME = "yolo11l-seg.pt"  # l=large; use yolo11x-seg.pt for max accuracy
 RUN_NAME = "xbd_seg_v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Resume Training Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+RESUME_CONFIG = {
+    'resume': True,                    # Enable resume from checkpoint
+    'prefer_best': True,               # True: use best.pt, False: use last.pt
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Evaluation Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
