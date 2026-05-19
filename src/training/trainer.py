@@ -27,7 +27,7 @@ LABEL_NAMES   = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
 # Computed from inverse frequency with smoothing: 1 / (frequency + 0.1)
 # Emphasizes rare damage classes while preventing explosion of weights
 # [Background (85.9%), Intact (11.7%), Damaged (1.5%), Destroyed (0.9%)]
-CLASS_WEIGHTS = [0.1, 1.0, 5.0, 10.0]
+CLASS_WEIGHTS = [0.5, 5.0, 7.0, 10.0]
 
 # Gradient monitoring for stability
 MAX_GRAD_NORM = 1.0  # Allow larger gradients but still clip explosions
@@ -135,6 +135,9 @@ class Trainer:
             record = {"epoch": epoch, "lr": current_lr, **train_stats, **val_stats}
             self.history.append(record)
 
+            # Save training curves after each epoch
+            self.plot_history(save_dir=self.checkpoint_dir)
+
             # early stopping — only apply after encoder is unfrozen
             if epoch > 10 and self.epochs_no_improve >= self.patience:
                 print(
@@ -144,13 +147,23 @@ class Trainer:
                 break
 
         print(f"\n  Training complete. Best val mean_iou: {self.best_mean_iou:.4f}")
+        
+        # Generate confusion matrix only at the end of training
+        self.plot_history(save_dir=self.checkpoint_dir, generate_confusion_matrix=True)
+        
         return self.history
     
-    def plot_history(self, save_dir: str = "checkpoints") -> None:
+    def plot_history(self, save_dir: str = "checkpoints", generate_confusion_matrix: bool = False) -> None:
         """
-        Saves training curves and confusion matrix after training completes.
+        Saves training curves and optionally confusion matrix.
             - training_curves.png  — loss + mIoU + mAcc per epoch
-            - confusion_matrix.png — normalised CM from best val epoch
+            - confusion_matrix.png — normalised CM from best val epoch (only if generate_confusion_matrix=True)
+        
+        Args:
+            save_dir: Directory to save plots
+            generate_confusion_matrix: If True, reloads best checkpoint and generates confusion matrix.
+                                       If False, only plots training curves without touching the model.
+                                       Set to False during training, True only at the end.
         """
         import matplotlib.pyplot as plt
         import numpy as np
@@ -161,7 +174,7 @@ class Trainer:
 
         # ── Figure 1: Training Curves ──────────────────────────────────────────
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-        fig.suptitle("Training Curves — SimpleUNet", fontsize=14)
+        fig.suptitle("Training Curves — UNet", fontsize=14)
 
         # Loss
         axes[0].plot(epochs, [r["train/loss"] for r in self.history], label="Train")
@@ -184,7 +197,7 @@ class Trainer:
         # Mean Accuracy
         axes[2].plot(epochs, [r.get("train/mean_acc", 0) for r in self.history], label="Train")
         axes[2].plot(epochs, [r.get("val/mean_acc",   0) for r in self.history], label="Val")
-        axes[2].set_title("Mean Accuracy (classes 1–3)")
+        axes[2].set_title("Mean Accuracy (classes 1-3)")
         axes[2].set_xlabel("Epoch")
         axes[2].set_ylabel("Accuracy")
         axes[2].legend()
@@ -195,6 +208,10 @@ class Trainer:
         plt.savefig(curve_path, dpi=150, bbox_inches="tight")
         plt.close()
         print(f" Training curves saved → {curve_path}")
+
+        # Only generate confusion matrix at the end of training if requested
+        if not generate_confusion_matrix:
+            return
 
         # reload Best Checkpoint for CM 
         best_path = os.path.join(self.checkpoint_dir, "UNet.pth")
