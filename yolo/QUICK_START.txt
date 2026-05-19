@@ -1,0 +1,144 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  YOLO11 xBD SEGMENTATION - QUICK START                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📁 FILES CREATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ config.py              - Configuration & constants
+✓ train.py              - Training script
+✓ evaluate.py           - Evaluation & visualization script
+✓ run_pipeline.py       - Complete pipeline orchestrator
+✓ README_YOLO11.md      - Comprehensive documentation
+✓ USAGE.md              - Quick start & examples
+✓ QUICK_START.txt       - This file
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ QUICK START COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run Everything (Train + Evaluate):
+  python run_pipeline.py
+
+Train Only:
+  python train.py
+
+Evaluate Only (use pre-trained model):
+  python evaluate.py
+
+Evaluate with 100 samples:
+  python run_pipeline.py --no-train --num-samples 100
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 CLASSES (3 Damage Categories)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Class 0: Intact     (🟢 Green)     - Undamaged buildings
+Class 1: Damaged    (🟠 Orange)    - Partially damaged buildings
+Class 2: Destroyed  (🔴 Red)       - Completely destroyed buildings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 EXPECTED OUTPUTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Training Results:
+  xbd_yolo/runs/xbd_seg_v1/
+    ├── weights/best.pt      ← Best model
+    ├── results.csv          ← Training metrics
+    └── ... (plots & images)
+
+Evaluation Results:
+  xbd_yolo/heatmaps/
+    ├── {scene}_heatmap.png  ← Individual scene heatmaps
+    └── aggregate_heatmap.png ← Overall damage distribution
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚙️  COMMON CUSTOMIZATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Edit config.py to change:
+
+1. Use Larger Model (better accuracy, slower):
+   MODEL_NAME = "yolo11x-seg.pt"
+
+2. Smaller Batch (save memory):
+   TRAINING_CONFIG['batch'] = 2
+
+3. Different Learning Rate:
+   TRAINING_CONFIG['lr0'] = 5e-5
+
+4. More Training Epochs:
+   TRAINING_CONFIG['epochs'] = 200
+
+5. Custom Dataset Path:
+   YOLO_DS_DIR = r"C:\path\to\dataset"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"best.pt not found"
+  → Run train.py first to train the model
+
+GPU Out of Memory (OOM)
+  → Reduce batch size: TRAINING_CONFIG['batch'] = 2
+
+No GPU Available
+  → Set in config.py: 'device': 'cpu'
+
+Very Slow Training
+  → Use smaller model: MODEL_NAME = "yolo11n-seg.pt"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+README_YOLO11.md  - Full documentation with all features
+USAGE.md          - Detailed usage examples and configurations
+config.py         - Configuration reference (well-commented)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ YOLO11-Large segmentation model (650M parameters)
+✓ 150 epochs with cosine annealing learning rate
+✓ Comprehensive data augmentation
+✓ Automatic checkpoint & best model tracking
+✓ Damage heatmap visualization
+✓ Aggregate spatial damage analysis
+✓ Official YOLO metrics (mAP50, mAP50-95)
+✓ Per-class performance evaluation
+✓ Modular, reusable code structure
+✓ Full GPU support with fallback to CPU
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Prepare Dataset (using notebook)
+   - Convert xBD to YOLO format
+   - Create images/ and labels/ directories
+
+2. Train Model
+   python train.py
+   → Creates xbd_yolo/runs/xbd_seg_v1/weights/best.pt
+
+3. Evaluate & Visualize
+   python evaluate.py
+   → Creates heatmap visualizations in xbd_yolo/heatmaps/
+   → Prints mAP metrics to console
+
+4. Fine-tune (optional)
+   - Edit config.py
+   - Run train.py again
+
+╚══════════════════════════════════════════════════════════════════════════════╝
