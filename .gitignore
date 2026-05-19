@@ -3,5 +3,8 @@
 **pycache**
 
 # ignore the checkpoints
-/checkpoints/UNet.pth
+/checkpoints
 /checkpoints/xview2/UNet.pth
+/checkpoints/xview2/UNet-[0.1,1.0, 5.0, 10.0].pth
+/xbd_yolo
+/xbd_yolo.zip
