@@ -8,7 +8,7 @@ from evaluate import (
     load_best_model, run_inference, save_heatmaps,
     aggregate_disaster_heatmap, evaluate_model
 )
-from config import YOLO_DS_DIR
+from archieved_experiments.yolo.config import YOLO_DS_DIR
 
 
 def run_full_pipeline(train=True, eval=True, num_samples=50):

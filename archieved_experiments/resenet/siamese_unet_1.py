@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 
 # from .resnet_encoder import ResNetEncoder
-from ..optical_encoder import OpticalEncoder, DoubleConv
+from ...src.models.optical_encoder import OpticalEncoder, DoubleConv
 from ..sar_encoder import SAREncoder
-from ..decoder import DecoderBlock
+from ...src.models.decoder import DecoderBlock
 from ..projection import ProjectionFusion
 
 """Fully symmetric Siamese UNet:

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from tqdm import tqdm
 from ultralytics import YOLO
-from config import (
+from archieved_experiments.yolo.config import (
     YOLO_CLASSES, YOLO_DS_DIR, IMG_SIZE, EVAL_CONFIG, INFERENCE_CONFIG
 )
 

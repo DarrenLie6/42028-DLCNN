@@ -2,8 +2,8 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .optical_encoder import OpticalEncoder, DoubleConv
-from .decoder import DecoderBlock
+from ..src.models.optical_encoder import OpticalEncoder, DoubleConv
+from ..src.models.decoder import DecoderBlock
 
 
 class UNet(nn.Module):

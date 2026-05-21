@@ -2,7 +2,7 @@
 
 import os
 from ultralytics import YOLO
-from config import (
+from archieved_experiments.yolo.config import (
     YOLO_DS_DIR, MODEL_NAME, RUN_NAME, TRAINING_CONFIG, IMG_SIZE, RESUME_CONFIG
 )
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .optical_encoder import DoubleConv 
+from ..src.models.optical_encoder import DoubleConv 
 
 
 class ResidualBlock(nn.Module):
