@@ -21,7 +21,7 @@ st.set_page_config(page_title="ImpactVision", layout="centered")
 @st.cache_resource
 def load_model():
     model = AttentionUNet(num_classes=4)  # xView2: 4 classes (0=bg, 1=intact, 2=damaged, 3=destroyed)
-    weight_path = os.path.join(os.path.dirname(__file__), r"E:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\checkpoints\xview2\UNet.pth")
+    weight_path = ROOT_DIR / "checkpoints" / "xview2" / "UNet.pth"
     try:
         checkpoint = torch.load(weight_path, map_location="cpu")
         # Extract model state dict if checkpoint has wrapped metadata
