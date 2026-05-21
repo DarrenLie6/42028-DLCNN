@@ -1,0 +1,66 @@
+============================================================
+XVIEW2 DATASET — EXPLORATORY DATA ANALYSIS
+============================================================
+
+[1/5] Tile counts per event...
+   Saved → reports\eda/1_tile_counts.png
+
+   Event                           Train    Val   Test   Total
+   -------------------------------------------------------
+   guatemala-volcano                   2      1      5       8
+   hurricane-florence                 40      8    108     156
+   hurricane-harvey                   39      6    108     153
+   hurricane-matthew                  34     10     73     117
+   hurricane-michael                  48     10     98     156
+   joplin-tornado                     15      4      0      19
+   lower-puna-volcano                 31      7      0      38
+   mexico-earthquake                  15      1     38      54
+   midwest-flooding                   37      8     80     125
+   moore-tornado                      13      6      0      19
+   nepal-flooding                     56      7      0      63
+   palu-tsunami                       16      8     42      66
+   pinery-bushfire                   210     38      0     248
+   portugal-wildfire                 175     32      0     207
+   santa-rosa-wildfire                38      7     74     119
+   socal-fire                         96     15    307     418
+   sunda-tsunami                      16      6      0      22
+   tuscaloosa-tornado                 43      9      0      52
+   woolsey-fire                       76     17      0      93
+
+[2/5] Label class distribution (from JSON annotations)...
+   Scanning labels: 100%|████████| 2133/2133 [00:07<00:00, 302.80it/s]
+E:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\scripts\eda.py:306: UserWarning: set_ticklabels() should only be used with a fixed number of ticks, i.e. after set_ticks() or using a FixedLocator.
+  axes[1].set_xticklabels(events, rotation=45, ha="right", fontsize=8)
+   Saved → reports\eda/3_damage_density.png
+   Saved → reports\eda/2_label_distribution.png
+
+   Global building damage counts:
+   Class 1 (Intact    ):       74,902  (75.5%)
+   Class 2 (Damaged   ):       16,580  (16.7%)
+   Class 3 (Destroyed ):        7,751  (7.8%)
+
+[3/5] Computing image statistics (sample of 500 tiles)...
+   Reading tiles: 100%|█████████████| 500/500 [00:09<00:00, 51.41it/s]
+
+   Optical (RGB) per-channel stats  [500 tiles]:
+     R: mean=83.10  std=31.73
+     G: mean=88.36  std=28.00
+     B: mean=66.57  std=26.26
+
+   Saved → reports\eda/4_image_stats.png
+
+   Recommended normalization values for train_config.yaml:
+     optical_mean: [0.326, 0.347, 0.261]
+     optical_std : [0.124, 0.11, 0.103]
+
+[4/5] Generating sample tile visualizations (pre | post | damage mask)...
+   Saved → reports\eda/5_sample_tiles.png
+
+[5/5] Dataset split summary...
+   train: 1000 / 1000 tiles available (100.0%)
+   val  :  200 / 200 tiles available (100.0%)
+   test :  933 / 933 tiles available (100.0%)
+
+============================================================
+EDA complete! All plots saved to: reports\eda/
+============================================================

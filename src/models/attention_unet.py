@@ -72,11 +72,11 @@ class AttentionUNet(nn.Module):
         super().__init__()
         self.use_self_attention = use_self_attention
 
-        # ── Encoder ───────────────────────────────────────────────────
+        # encoder
         self.encoder = OpticalEncoder(dropout_p=dropout_p)
         enc_ch = self.encoder.out_channels   # [64, 128, 256, 512]
 
-        # ── Bottleneck ────────────────────────────────────────────────
+        # bottleneck
         bottleneck_in  = enc_ch[3]           # 512
         bottleneck_out = bottleneck_in // 2  # 256
 
@@ -93,7 +93,7 @@ class AttentionUNet(nn.Module):
 
         self.bottleneck_cbam = CBAM(bottleneck_out, reduction=8)
 
-        # ── Decoder ───────────────────────────────────────────────────
+        # decoder
         self.dec3 = AttentionDecoderBlock(
             in_ch=bottleneck_out,   # 256, H/16
             skip_ch=enc_ch[2],      # 256, H/8
@@ -113,7 +113,7 @@ class AttentionUNet(nn.Module):
             dropout_p=dropout_p
         )
 
-        # ── Final upsample H/2 → H ────────────────────────────────────
+        # final upsample H/2 → H 
         self.final_upsample = nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
             nn.Conv2d(enc_ch[0], enc_ch[0], kernel_size=3, padding=1, bias=False),
@@ -123,7 +123,7 @@ class AttentionUNet(nn.Module):
 
         self.final_cbam = CBAM(enc_ch[0], reduction=8)
 
-        # ── Segmentation Head ─────────────────────────────────────────
+        # Segmentation Head
         self.head = nn.Sequential(
             nn.Conv2d(enc_ch[0], 16, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(16),
@@ -159,20 +159,20 @@ class AttentionUNet(nn.Module):
         Returns:
             logits: (B, num_classes, H, W)
         """
-        # ── Encoder ───────────────────────────────────────────────────
+        # Encoder
         feats = self.encoder(image)
         # feats[0]: (B,  64, H/2,  W/2)
         # feats[1]: (B, 128, H/4,  W/4)
         # feats[2]: (B, 256, H/8,  W/8)
         # feats[3]: (B, 512, H/16, W/16)
 
-        # ── Bottleneck ────────────────────────────────────────────────
+        #  Bottleneck 
         x = self.bottleneck(feats[3])         # (B, 256, H/16, W/16)
         if self.use_self_attention:
             x = self.bottleneck_attention(x)
         x = self.bottleneck_cbam(x)
 
-        # ── Decoder ───────────────────────────────────────────────────
+        # Decoder
         x = self.dec3(x, feats[2])   # upsample→(H/8),  gate, cat, conv → (B, 256, H/8,  W/8)
         x = self.dec2(x, feats[1])   # upsample→(H/4),  gate, cat, conv → (B, 128, H/4,  W/4)
         x = self.dec1(x, feats[0])   # upsample→(H/2),  gate, cat, conv → (B,  64, H/2,  W/2)

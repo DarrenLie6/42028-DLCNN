@@ -50,7 +50,7 @@ class XViewDataset(Dataset):
         self.mode      = mode
         self.tile_size = cfg.data.tile_size   # 256
 
-        # ── Gather all stems from the correct split folders ───────────
+        # gather all stems from the correct split folders 
         self.stems = []
         for folder in SPLIT_DIRS[mode]:
             img_dir = self.root / folder / "images"
@@ -76,29 +76,29 @@ class XViewDataset(Dataset):
         img_dir = self.root / folder / "images"
         lbl_dir = self.root / folder / "labels"
 
-        # ── Load post-disaster image (RGB only) ───────────────────────
+        # load post-disaster image (RGB only)
         post_path = self._find_image(img_dir, f"{stem}_post_disaster")
         post = self._load_image(post_path)
 
-        # ── Load + rasterise label ────────────────────────────────────
+        # load + rasterise label
         h, w  = post.shape[:2]
         label = self._rasterise_label(
             lbl_dir / f"{stem}_post_disaster.json", h, w
         )
 
-        # ── Resize to standard tile size ──────────────────────────────
+        # resize to standard tile size
         if post.shape[0] != self.tile_size or post.shape[1] != self.tile_size:
             post = cv2.resize(post, (self.tile_size, self.tile_size), interpolation=cv2.INTER_LINEAR)
             label = cv2.resize(label, (self.tile_size, self.tile_size), interpolation=cv2.INTER_NEAREST)
 
-        # ── Augmentation ──────────────────────────────────────────────
+        # augmentation
         if self.transform:
             # For SimpleUNet, we only augment the post-disaster image
             r     = self.transform(image=post, mask=label)
             post  = r["image"]
             label = r["mask"]
 
-        # ── To tensors ────────────────────────────────────────────────
+        # convert to tensors
         post_t = torch.from_numpy(post.transpose(2, 0, 1)).float()
 
         return {
@@ -107,7 +107,7 @@ class XViewDataset(Dataset):
             "stem":  stem,
         }
 
-    # ── Helpers ───────────────────────────────────────────────────────
+    # helpers
     
     def _find_image(self, folder: Path, stem: str) -> Path:
         """Try .tif first, then .png."""

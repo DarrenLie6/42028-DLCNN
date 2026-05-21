@@ -11,7 +11,7 @@ from .dataset import BRIGHTDataset
 from .augmentation_utils import build_train_aug, build_val_aug
 
 
-# ── Split file builder (BRIGHT only) ─────────────────────────────────────────
+# split file builder (BRIGHT only)
 def build_pairs(cfg) -> None:
     """
     Scans the train/pre-event folder and writes train_set.txt, val_set.txt
@@ -51,7 +51,7 @@ def build_pairs(cfg) -> None:
     print(f"[build_pairs] wrote {len(train_stems)} train / {len(val_stems)} val stems")
 
 
-# ── Weighted Sampler (BRIGHT only) ────────────────────────────────────────────
+# weighted Sampler (BRIGHT only)
 def _compute_tile_weights_bright(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
     """
     Assigns each tile a sampling weight proportional to its damaged pixel
@@ -83,7 +83,7 @@ def _compute_tile_weights_bright(dataset: BRIGHTDataset, cfg) -> torch.Tensor:
     return torch.tensor(weights, dtype=torch.float32)
 
 
-# ── Weighted Sampler (xBD) ────────────────────────────────────────────────────
+# weighted Sampler (xBD)
 def _compute_tile_weights_xbd(dataset, cfg) -> torch.Tensor:
     """
     Assigns each xBD tile a sampling weight based on damage pixel fraction.
@@ -117,7 +117,7 @@ def _compute_tile_weights_xbd(dataset, cfg) -> torch.Tensor:
     return torch.tensor(weights, dtype=torch.float32)
 
 
-# ── Collate ───────────────────────────────────────────────────────────────────
+# collate
 def collate_fn(batch):
     return {
         "optical":       torch.stack([b["optical"]       for b in batch]),
@@ -128,7 +128,7 @@ def collate_fn(batch):
     }
 
 
-# ── Main entry point ──────────────────────────────────────────────────────────
+# main entry point
 def get_dataloaders(cfg):
     """
     Returns (train_loader, val_loader, test_loader).
@@ -136,7 +136,7 @@ def get_dataloaders(cfg):
     """
     dataset_name = getattr(cfg.data, "dataset", "bright").lower()
 
-    # ── BRIGHT ────────────────────────────────────────────────────────
+    #  BRIGHT 
     if dataset_name == "bright":
         build_pairs(cfg)
         splits_dir = Path(cfg.data.split_file_dir)
@@ -206,7 +206,7 @@ def get_dataloaders(cfg):
 
         print(f"[BRIGHT] train={len(train_ds)} val={len(val_ds)} tiles")
 
-    # ── xBD ───────────────────────────────────────────────────────────
+    # xview2
     elif dataset_name == "xview":
         from src.data.xview2_dataset import XViewDataset
 
