@@ -100,7 +100,7 @@ def load_image_from_bytes(file_bytes, file_name):
         img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
         return img
 
-def run_inference(post_img, pre_img=None):
+def run_inference(post_img):
     opt_transform = transforms.Compose([
         transforms.Resize((512, 512)),  # xView2 training size
         transforms.ToTensor(),
@@ -124,8 +124,8 @@ def run_inference(post_img, pre_img=None):
         rgba_mask[preds_resized == class_idx] = color
     mask_img = Image.fromarray(rgba_mask)
 
-    # overlay on pre or post
-    bg = pre_img.convert("RGBA") if pre_img else post_img.convert("RGBA")
+    # overlay on post-event image
+    bg = post_img.convert("RGBA")
     if bg.size != original_size:
         bg = bg.resize(original_size)
 
@@ -137,15 +137,8 @@ st.title("ImpactVision: AI Powered Satellite Damage Assessment Tool")
 st.write("---")
 
 st.subheader("Step 1: Upload Satellite Imagery")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.write("**Post-Event Image (Optical RGB) - REQUIRED**")
-    post_file = st.file_uploader("Drag & Drop Post-Event", type=["png", "jpg", "jpeg", "tif", "tiff"])
-
-with col2:
-    st.write("**Pre-Event Image (Optical RGB) - OPTIONAL**")
-    pre_file = st.file_uploader("Drag & Drop Pre-Event", type=["png", "jpg", "jpeg", "tif", "tiff"])
+st.write("**Post-Event Image (Optical RGB) - REQUIRED**")
+post_file = st.file_uploader("Drag & Drop Post-Event", type=["png", "jpg", "jpeg", "tif", "tiff"])
 
 st.write("---")
 st.subheader("Step 2: Run Assessment")
@@ -154,9 +147,8 @@ if post_file is not None:
     if st.button("🚀 GENERATE COLOUR-GRADED MAP", use_container_width=True):
         with st.spinner("Running model..."):
             post_img = load_image_from_bytes(post_file.getvalue(), post_file.name)
-            pre_img  = load_image_from_bytes(pre_file.getvalue(), pre_file.name) if pre_file else None
 
-            result_map = run_inference(post_img, pre_img)
+            result_map = run_inference(post_img)
 
             buf = io.BytesIO()
             result_map.save(buf, format="PNG")
@@ -164,7 +156,7 @@ if post_file is not None:
 
         st.write("---")
         st.subheader("Step 3: Assessment Results")
-        caption_text = "Damage Map Overlay (on Pre-Event)" if pre_file else "Damage Map Overlay (on Post-Event)"
+        caption_text = "Damage Map Overlay"
         st.image(result_map, caption=caption_text, use_container_width=True)
 
         st.markdown("""
@@ -178,4 +170,4 @@ if post_file is not None:
             mime="image/png"
         )
 else:
-    st.info("Please upload a Post-Event optical image to unlock the assessment button.")
+    st.info("Please upload a satellite image to begin the assessment.")
