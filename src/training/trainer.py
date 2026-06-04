@@ -104,13 +104,6 @@ class Trainer:
         for epoch in range(start_epoch + 1, self.num_epochs + 1):
             epoch_start = time.time()
 
-            # Unfreeze encoder at epoch 10 and halve LR
-            # if epoch == 10:
-            #     self._unfreeze_encoder()
-            #     for g in self.optimizer.param_groups:
-            #         g['lr'] = g['lr'] * 0.5
-            #     print(f" Encoder unfrozen at epoch {epoch} | LR halved to {self.optimizer.param_groups[0]['lr']:.2e}")
-
             train_stats = self._train_epoch(epoch)
             val_stats   = self._val_epoch(epoch)
 
@@ -157,7 +150,7 @@ class Trainer:
         """
         Saves training curves and optionally confusion matrix.
             - training_curves.png  — loss + mIoU + mAcc per epoch
-            - confusion_matrix.png — normalised CM from best val epoch (only if generate_confusion_matrix=True)
+            - confusion_matrix.png — normalised CM from best val epoch
         
         Args:
             save_dir: Directory to save plots
@@ -237,7 +230,7 @@ class Trainer:
         else:
             print(f" Warning: No checkpoint found at {best_path} — CM will use last epoch")
 
-        # Figure 2: Confusion Matrix 
+       
         cm = self.val_metrics.conf_matrix.cpu().numpy().astype(float)
 
         # Row-normalise so each cell = recall per class
@@ -300,7 +293,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            # ── Forward + loss under FP16 ─────────────────────────────────────────
+            # forward + loss under FP16 
             with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
                 logits = self.model(image)
                 loss_output = self.criterion(logits, targets)
@@ -315,10 +308,10 @@ class Trainer:
                 print(f"  ⚠ NaN/Inf loss at batch {n_batches}, skipping.")
                 continue
 
-            # ── Backward ──────────────────────────────────────────────────────────
+            # backward
             self.scaler.scale(loss).backward()
 
-            # Unscale BEFORE clip so clip_grad_norm sees real magnitudes not scaled ones
+            # unscale BEFORE clip so clip_grad_norm sees real magnitudes not scaled ones
             self.scaler.unscale_(self.optimizer)
 
             grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -326,9 +319,10 @@ class Trainer:
                 max_norm=MAX_GRAD_NORM
             )
 
-            # Log explosion but DO NOT skip — scaler must always be stepped+updated
-            # once backward() has been called. It detects inf internally, skips the
-            # optimizer update automatically, and halves its scale for the next batch.
+            # Log explosion but without skip — scaler must always be stepped+updated
+            # once backward() has been called. 
+            # it detects inf internally, skips the optimizer update automatically, and halves 
+            # its scale for the next batch
             if torch.isnan(grad_norm) or torch.isinf(grad_norm):
                 print(f"  ⚠ norm={grad_norm:.2e} — scaler self-correcting.")
 
@@ -340,7 +334,7 @@ class Trainer:
             if torch.isnan(grad_norm) or torch.isinf(grad_norm):
                 continue
 
-            # ── Accumulate losses ─────────────────────────────────────────────────
+            # accumulate losses
             total_loss  += loss.item()
             total_ce    += ce_loss.item()
             total_dice  += dice_loss.item()
@@ -360,7 +354,7 @@ class Trainer:
                 postfix["focal"] = f"{focal_loss.item():.4f}"
             batch_bar.set_postfix(postfix)
 
-        # ── Compute metrics in eval mode for stable BatchNorm stats ──────
+        # compute metrics in eval mode for stable BatchNorm stats
         self.model.eval()
         with torch.no_grad():
             metrics = self.train_metrics.compute()
@@ -416,7 +410,7 @@ class Trainer:
                     loss, ce_loss, dice_loss = loss_output
                     focal_loss = None
                 
-            # ── DEBUG: add these lines temporarily ────────────────
+            # DEBUG: add these lines temporarily
             if torch.isnan(loss):
                 print(f"  NaN detected!")
                 print(f"  ce_loss   = {ce_loss.item()}")

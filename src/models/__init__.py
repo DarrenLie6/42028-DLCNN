@@ -5,7 +5,7 @@ from .attention import (
     CBAM,
     AttentionGate,
     SelfAttention,
-    AttentionResidualBlock,
+    # AttentionResidualBlock,
 )
 
 __all__ = [
@@ -17,5 +17,5 @@ __all__ = [
     "CBAM",
     "AttentionGate",
     "SelfAttention",
-    "AttentionResidualBlock",
+    # "AttentionResidualBlock",
 ]

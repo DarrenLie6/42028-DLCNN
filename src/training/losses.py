@@ -4,14 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-"""Loss functions optimized for xBD (xView2 Building Damage) semantic segmentation
-with extreme class imbalance (85.9% background vs 0.9% destroyed).
-
-Recommended for AttentionUNet:
-- CombinedLoss: 0.4 CE + 0.3 Dice + 0.3 Focal (default)
-- Or FocalLoss: focuses on hard negatives
-"""
-
 
 class DiceLoss(nn.Module):
     """Dice Loss (F1 score) - works better when combined with CE for imbalanced data.
@@ -122,56 +114,6 @@ class FocalLoss(nn.Module):
         valid_mask = (targets != self.ignore_index).float()
         return (focal_loss * valid_mask).sum() / (valid_mask.sum() + 1e-8)
 
-
-# class CombinedLoss(nn.Module):
-#     """
-#     0.5 * WeightedCE + 0.5 * Dice
-#     Weights derived from eda
-#     """
-
-#     def __init__(
-#         self,
-#         num_classes:   int   = 4,
-#         ignore_index:  int   = 0,
-#         ce_weights:    float = 0.5,
-#         dice_weights:  float = 0.5,
-#         class_weights: list  = None,
-#     ):
-#         super().__init__()
-#         self.ce_w         = ce_weights
-#         self.dice_w       = dice_weights
-#         self.ignore_index = ignore_index
-
-#         if class_weights is None:
-#             class_weights = [0.0, 1.0, 7.8, 20.0]
-
-#         # register_buffer → moves automatically with .to(device)
-#         self.register_buffer(
-#             "weights",
-#             torch.tensor(class_weights, dtype=torch.float32)
-#         )
-
-#         self.dice = DiceLoss(num_classes=num_classes, ignore_index=ignore_index)
-
-#     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> tuple:
-#         # reduction="sum" so we control averaging manually
-#         ce_loss = F.cross_entropy(
-#             logits, targets,
-#             weight = self.weights,
-#             ignore_index = self.ignore_index,
-#             reduction  = "mean",
-#             label_smoothing=0.1
-#         )
-
-#         # Count valid (non-background) pixels
-#         valid_pixels = (targets != self.ignore_index).sum().float()
-
-#         # Guard against all-background batch → CE would be NaN otherwise
-#         ce_loss = logits.sum() * 0.0
-
-#         dice_loss = self.dice(logits, targets)
-#         total     = self.ce_w * ce_loss + self.dice_w * dice_loss
-#         return total, ce_loss, dice_loss
 
 class CombinedLoss(nn.Module):
     """Recommended loss for AttentionUNet + xBD semantic segmentation.

@@ -2,9 +2,8 @@
 
 import os
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Class Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 SEG_CLASSES  = ['background', 'intact', 'damaged', 'destroyed']
 NUM_CLASSES  = 4
@@ -27,9 +26,8 @@ CLASS_COLORS = {
     3: (220, 0,   0),    # destroyed  — red
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Dataset & Paths
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 BASE_DATA_DIR = r"E:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\data\xView2\geotiffs"
 YOLO_DS_DIR   = r"E:\UTS\CNN and Deep Learning\Assignment 3\42028-DLCNN\xbd_yolo"
@@ -42,9 +40,9 @@ TRAIN_DIRS = [
 VAL_DIR    = os.path.join(BASE_DATA_DIR, "hold")
 TEST_DIR   = os.path.join(BASE_DATA_DIR, "test")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # Training Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 TRAINING_CONFIG = {
     'epochs':        150,
@@ -74,25 +72,24 @@ TRAINING_CONFIG = {
     'patience':      50,                   # Early stopping patience
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Model Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 MODEL_NAME = "yolo11l-seg.pt"  # l=large; use yolo11x-seg.pt for max accuracy
 RUN_NAME = "xbd_seg_v1"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # Resume Training Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 RESUME_CONFIG = {
     'resume': True,                    # Enable resume from checkpoint
     'prefer_best': True,               # True: use best.pt, False: use last.pt
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # Evaluation Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 EVAL_CONFIG = {
     'imgsz':   IMG_SIZE,

@@ -74,14 +74,14 @@ class AttentionGate(nn.Module):
             nn.Conv2d(f_l, f_int, kernel_size=1, bias=False),
             nn.BatchNorm2d(f_int),
         )
-        # FIX: correct order is BN → ReLU → Conv → Sigmoid
+    
         self.combine = nn.Sequential(
             nn.BatchNorm2d(f_int),
             nn.ReLU(inplace=True),
             nn.Conv2d(f_int, 1, kernel_size=1, bias=False),
             nn.Sigmoid()
         )
-        # NO upsample here — caller handles spatial alignment
+       
 
     def forward(self, g: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """
@@ -91,12 +91,12 @@ class AttentionGate(nn.Module):
         Returns:
             gated skip        (B, f_l, H, W)
         """
-        g1 = self.gate(g)          # (B, f_int, H, W)
-        x1 = self.skip(x)          # (B, f_int, H, W)
+        g1 = self.gate(g) # (B, f_int, H, W)
+        x1 = self.skip(x) # (B, f_int, H, W)
         psi = self.combine(g1 + x1)  # (B, 1, H, W)
         return x * psi
 
-
+# dissabled due to exploding gradient
 class SelfAttention(nn.Module):
     def __init__(self, in_channels: int, inter_channels: int = None):
         super().__init__()
@@ -147,36 +147,36 @@ class SelfAttention(nn.Module):
         return x + self.gamma * out
 
 
-class AttentionResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, dropout_p: float = 0.1):
-        super().__init__()
-        self.conv1   = nn.Conv2d(in_channels,  out_channels, kernel_size=3, padding=1, bias=False)
-        self.bn1     = nn.BatchNorm2d(out_channels)
-        self.relu    = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout2d(p=dropout_p)
-        self.conv2   = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
-        self.bn2     = nn.BatchNorm2d(out_channels)
-        self.cbam    = CBAM(out_channels)
+# class AttentionResidualBlock(nn.Module):
+#     def __init__(self, in_channels: int, out_channels: int, dropout_p: float = 0.1):
+#         super().__init__()
+#         self.conv1   = nn.Conv2d(in_channels,  out_channels, kernel_size=3, padding=1, bias=False)
+#         self.bn1     = nn.BatchNorm2d(out_channels)
+#         self.relu    = nn.ReLU(inplace=True)
+#         self.dropout = nn.Dropout2d(p=dropout_p)
+#         self.conv2   = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+#         self.bn2     = nn.BatchNorm2d(out_channels)
+#         self.cbam    = CBAM(out_channels)
 
-        self.skip_conv = None
-        if in_channels != out_channels:
-            self.skip_conv = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
+#         self.skip_conv = None
+#         if in_channels != out_channels:
+#             self.skip_conv = nn.Sequential(
+#                 nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+#                 nn.BatchNorm2d(out_channels)
+#             )
 
-        # inplace=False after residual add to protect identity branch gradient
-        self.relu_out = nn.ReLU(inplace=False)
+#         # inplace=False after residual add to protect identity branch gradient
+#         self.relu_out = nn.ReLU(inplace=False)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        identity = x
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         identity = x
 
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.dropout(out)
-        out = self.bn2(self.conv2(out))
-        out = self.cbam(out)
+#         out = self.relu(self.bn1(self.conv1(x)))
+#         out = self.dropout(out)
+#         out = self.bn2(self.conv2(out))
+#         out = self.cbam(out)
 
-        if self.skip_conv is not None:
-            identity = self.skip_conv(identity)
+#         if self.skip_conv is not None:
+#             identity = self.skip_conv(identity)
 
-        return self.relu_out(out + identity)
+#         return self.relu_out(out + identity)

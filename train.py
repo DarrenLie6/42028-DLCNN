@@ -59,17 +59,7 @@ def get_device() -> torch.device:
         print(" No GPU found — running on CPU")
     return device
 
-# model
-# def build_model(cfg: SimpleNamespace) -> torch.nn.Module:
-#     model = SiameseUNet(
-#         num_classes = cfg.data.num_classes,
-#         # pretrained  = cfg.model.pretrained,
-#         # backbone= cfg.model.backbone
-#         dropout_p= cfg.model.dropout_p
-#     )
-#     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-#     print(f" Model params: {n_params / 1e6:.2f}M")
-#     return model
+
 def build_model(cfg) -> torch.nn.Module:
     model = AttentionUNet(
         num_classes = cfg.data.num_classes,
@@ -125,22 +115,6 @@ def main():
     # model 
     model = build_model(cfg)
     
-    # model = model.to(device)
-    
-    # dummy_opt = torch.zeros(1, 3, 512, 512).to(device)
-    # dummy_sar = torch.zeros(1, 1, 512, 512).to(device)
-    # dummy_valid = torch.ones(1, dtype=torch.bool).to(device)
-    # with torch.no_grad():
-    #     out = model(dummy_opt, dummy_sar, dummy_valid)
-    # print(f" Smoke test passed — output shape: {out.shape}")
-    
-    # print(f"[DEBUG] tile_size from cfg: {cfg.data.tile_size}")
-    # print(f"[DEBUG] dummy_opt shape: {dummy_opt.shape}")
-
-    # with torch.no_grad():
-    #     out = model(dummy_opt, dummy_sar, dummy_valid)
-
-    # print(f"[DEBUG] output shape: {out.shape}")
 
     # trainer 
     trainer = Trainer(
@@ -162,7 +136,7 @@ def main():
         start_epoch = trainer.load_checkpoint(args.resume)
         print(f" Resuming from epoch {start_epoch + 1}")
     else:
-        # ── Auto-detect checkpoint if no --resume flag given ──────────────
+        # Auto-detect checkpoint if no --resume flag given
         auto_ckpt = Path(t.checkpoint_dir) / "UNet.pth"
         if auto_ckpt.exists():
             start_epoch = trainer.load_checkpoint(str(auto_ckpt))

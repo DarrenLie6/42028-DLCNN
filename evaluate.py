@@ -15,12 +15,12 @@ import random
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# ── Paths ─────────────────────────────────────────────────────────────
+#  Paths
 SCRIPT_DIR  = Path(__file__).resolve().parent
 CKPT_PATH   = SCRIPT_DIR / "checkpoints" / "xview2" / "UNet.pth"
 CONFIG_PATH = SCRIPT_DIR / "train_config.yaml"
 
-# ── xBD 4-class setup (0=bg, 1=intact, 2=damaged, 3=destroyed) ────
+#  xBD 4-class setup (0=bg, 1=intact, 2=damaged, 3=destroyed)
 CLASS_NAMES = ["Background", "Intact", "Damaged", "Destroyed"]
 
 PALETTE = {
@@ -51,7 +51,7 @@ def evaluate(
         print("No test split found -- check your config.")
         return
 
-    # ── Model ─────────────────────────────────────────────────────────
+    #  Model
     model = build_model(cfg).to(device)
     ckpt  = torch.load(ckpt_path, map_location=device, weights_only=True)
     model.load_state_dict(ckpt["model_state"])
@@ -61,7 +61,7 @@ def evaluate(
     print(f"Epoch        : {ckpt['epoch']}")
     print(f"Val mIoU     : {ckpt['val_mean_iou']:.4f}\n")
 
-    # ── Loss + metrics ────────────────────────────────────────────────
+    #  Loss + metrics 
     criterion = CombinedLoss(
         num_classes   = NUM_CLASSES,      # 4
         ignore_index  = IGNORE_INDEX,     # -100 (background now included)
@@ -72,7 +72,7 @@ def evaluate(
     total_loss = 0.0
     n_batches  = 0
 
-    # ── Test loop ─────────────────────────────────────────────────────
+    #  Test loop 
     dataset_type = getattr(cfg.data, "dataset", "bright").lower()
     
     with torch.no_grad():
@@ -99,7 +99,7 @@ def evaluate(
             n_batches  += 1
             metrics.update(logits, targets)
 
-    # ── Results ───────────────────────────────────────────────────────
+    # Results
     results = metrics.compute()
 
     print("=" * 52)
@@ -124,7 +124,7 @@ def evaluate(
     )
     print("=" * 52)
 
-    # ── Visualise random test samples ─────────────────────────────────
+    # Visualise random test samples
     visualise_samples(
         model       = model,
         test_loader = test_loader,
@@ -143,7 +143,7 @@ def visualise_samples(model, test_loader, device, save_dir="checkpoints", n_samp
     mean = np.array([0.485, 0.456, 0.406])
     std  = np.array([0.229, 0.224, 0.225])
 
-    # ── Collect samples from multiple batches ──────────────────────
+    # Collect samples from multiple batches
     collected_images = []
     collected_targets = []
     collected_preds = []
@@ -163,8 +163,8 @@ def visualise_samples(model, test_loader, device, save_dir="checkpoints", n_samp
                         image  = batch["image"].to(device)  # (B,3,H,W)
                         logits = model(image)
                     else:
-                        optical       = batch["optical"].to(device)       # (B,6,H,W)
-                        sar           = batch["sar"].to(device)           # (B,1,H,W)
+                        optical       = batch["optical"].to(device) # (B,6,H,W)
+                        sar           = batch["sar"].to(device) # (B,1,H,W)
                         optical_valid = batch["optical_valid"].to(device) # (B,) bool
                         logits        = model(optical, sar, optical_valid)
             

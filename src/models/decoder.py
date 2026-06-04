@@ -46,7 +46,7 @@ class DecoderBlock(nn.Module):
         )
 
     def forward(self,x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
-        x = self.upsample(x)             # (B, in_ch, H*2, W*2)
+        x = self.upsample(x) # (B, in_ch, H*2, W*2)
         x = torch.cat([x, skip], dim=1)  # (B, in_ch + skip_ch, H*2, W*2)
         
-        return self.conv(x)              # (B, out_ch,   H*2, W*2)
+        return self.conv(x) # (B, out_ch,   H*2, W*2)

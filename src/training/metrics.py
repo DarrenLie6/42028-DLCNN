@@ -1,12 +1,6 @@
 from __future__ import annotations
 import torch
 
-""" Segmentation metrics for BRIGHT disaster assessment.
-
-    - 4 classes: 0=Background, 1=Intact, 2=Damaged, 3=Destroyed
-    - Background (index 0) is excluded from mean_iou and mean_f1.
-    - Confusion matrix is accumulated across batches for exact results.
-"""
 
 NUM_CLASSES = 4
 IGNORE_INDEX = -100
@@ -44,8 +38,8 @@ class SegmentationMetrics:
         targets = targets.to(self.device)
 
         # Include all pixels (background included, -100 ignored by PyTorch)
-        preds_flat = preds.reshape(-1)                  # (B*H*W,)
-        targets_flat = targets.reshape(-1)              # (B*H*W,)
+        preds_flat = preds.reshape(-1) # (B*H*W,)
+        targets_flat = targets.reshape(-1) # (B*H*W,)
 
         # Filter out only the ignore_index (-100) if it exists
         mask = targets_flat != self.ignore_index
@@ -60,36 +54,6 @@ class SegmentationMetrics:
 
         self.conf_matrix += batch_cm
         
-    # def compute(self) -> dict[str, float]:
-    #     """
-    #     Compute per-class IoU & F1 from the accumulated confusion matrix.
-
-    #     Returns flat dict:
-    #         iou/Background, iou/Intact, iou/Damaged, iou/Destroyed
-    #         f1/Background,  f1/Intact,  f1/Damaged,  f1/Destroyed
-    #         mean_iou   — average of classes 1-3 only
-    #         mean_f1    — average of classes 1-3 only
-    #     """
-    #     cm  = self.conf_matrix.float()      # (C, C)
-    #     tp  = cm.diag()                     # (C,) true positives
-    #     fp  = cm.sum(dim=0) - tp            # (C,) false positives
-    #     fn  = cm.sum(dim=1) - tp            # (C,) false negatives
-    #     eps = 1e-7
-
-    #     iou = tp / (tp + fp + fn + eps)         # (C,)
-    #     f1  = (2 * tp) / (2 * tp + fp + fn + eps)  # (C,)
-
-    #     results: dict[str, float] = {}
-    #     for idx, name in LABEL_NAMES.items():
-    #         results[f"iou/{name}"] = iou[idx].item()
-    #         results[f"f1/{name}"]  = f1[idx].item()
-
-    #     # Mean over foreground only: classes 1, 2, 3
-    #     fg = [i for i in LABEL_NAMES if i != self.ignore_index]
-    #     results["mean_iou"] = iou[fg].mean().item()
-    #     results["mean_f1"]  = f1[fg].mean().item()
-
-    #     return results
     
     def to(self, device: torch.device | str) -> "SegmentationMetrics":
         """Move internal CM tensor to device. Call after model.to(device)."""
