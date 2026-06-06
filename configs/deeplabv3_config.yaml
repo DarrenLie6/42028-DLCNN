@@ -1,0 +1,40 @@
+# Semantic Segmentation Configuration for xView2 Dataset
+# Single input: Post-disaster images
+# Task: Per-pixel damage classification (semantic segmentation)
+
+data:
+  dataset:        xview
+  root_dir:       data/xView2/geotiffs  # Root with tier1/tier3/hold/test
+  tile_size:      512                   # Resize tiles to 512x512
+  num_classes:    4                     # 0:Background, 1:Intact, 2:Damaged, 3:Destroyed
+
+# Data augmentation (training only)
+augmentation:
+  horizontal_flip_p:    0.3
+  vertical_flip_p:      0.3
+  rotate_90_p:          0.25
+  brightness_contrast:
+    brightness_limit:   0.2
+    contrast_limit:     0.2
+    p:                  0.4
+  gaussian_noise_p:     0.2
+  elastic_transform_p:  0.1
+  coarse_dropout_p:     0.2
+
+# Model configuration
+model:
+  backbone:              resnet50        # ResNet-50 backbone
+  pretrained:            true            # ImageNet pretraining
+  num_classes:           4
+
+# Training configuration
+training:
+  epochs:                350
+  batch_size:            8
+  learning_rate:         1.0e-4
+  weight_decay:          1.0e-4
+  min_lr:                1.0e-8
+  patience:              100              # Early stopping patience
+  checkpoint_dir:        checkpoints/semantic_seg
+  num_workers:           4
+

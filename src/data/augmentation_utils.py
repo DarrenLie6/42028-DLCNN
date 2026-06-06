@@ -33,7 +33,9 @@ def build_train_aug(cfg) -> A.Compose:
         A.HorizontalFlip(p=aug.horizontal_flip_p),
         A.VerticalFlip(p=aug.vertical_flip_p),
         A.RandomRotate90(p=aug.rotate_90_p),
-        A.RandomBrightnessContrast(p=aug.random_brightness_contrast_p),
+        A.RandomBrightnessContrast(brightness_limit=aug.brightness_contrast.brightness_limit,
+                                    contrast_limit=aug.brightness_contrast.contrast_limit,
+                                    p=aug.brightness_contrast.p),
         A.GaussNoise(p=aug.gaussian_noise_p),  # Enable Gaussian noise
         A.ElasticTransform(alpha=120, sigma=6, p=aug.elastic_transform_p),
         A.CoarseDropout(
