@@ -1,6 +1,7 @@
 # Ignore the dataset
 /data
 **pycache**
+**pth**
 
 # ignore the checkpoints
 /checkpoints

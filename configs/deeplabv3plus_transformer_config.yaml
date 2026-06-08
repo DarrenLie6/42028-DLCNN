@@ -1,0 +1,43 @@
+# Transformer DeepLabV3+ configuration for xView2
+# Encoder: MiT (SegFormer) hierarchical transformer
+# Decoder: DeepLabV3+ (ASPP + low-level fusion)
+# Task: per-pixel damage classification
+
+data:
+  dataset:        xview
+  root_dir:       data/xView2/geotiffs  # Root with tier1/tier3/hold/test
+  tile_size:      512
+  num_classes:    4                     # 0:Background, 1:Intact, 2:Damaged, 3:Destroyed
+
+# Data augmentation (training only)
+augmentation:
+  horizontal_flip_p:    0.3
+  vertical_flip_p:      0.3
+  rotate_90_p:          0.25
+  brightness_contrast:
+    brightness_limit:   0.2
+    contrast_limit:     0.2
+    p:                  0.4
+  gaussian_noise_p:     0.2
+  elastic_transform_p:  0.1
+  coarse_dropout_p:     0.2
+
+# Model configuration
+model:
+  variant:               b1              # MiT encoder size: b0 (light) | b1 | b2 (large)
+  pretrained:            true            # load ImageNet-pretrained timm backbone 
+  timm_backbone:         null            # optional override, e.g. pvt_v2_b1 / pvt_v2_b2 / mit_b1; null = auto by variant
+  aux_loss:              true            # auxiliary deep-supervision head
+  num_classes:           4
+
+# Training configuration
+training:
+  epochs:                350
+  warmup_epochs:         10              # linear LR warm-up (critical for transformers)
+  batch_size:            8               # lower to 4/2 if OOM (transformer attention is memory-heavy)
+  learning_rate:         6.0e-5          # transformers prefer a smaller peak LR than CNNs
+  weight_decay:          1.0e-2          # AdamW decay; higher for transformers
+  min_lr:                1.0e-6
+  patience:              100             # early stopping patience
+  checkpoint_dir:        checkpoints/semantic_seg_transformer
+  num_workers:           4

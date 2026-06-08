@@ -52,6 +52,7 @@ class SemanticSegmentationTrainer:
         checkpoint_dir: str = "checkpoints/semantic_seg",
         t_max: int = 50,
         eta_min: float = 1e-6,
+        warmup_epochs: int = 5,
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -67,10 +68,40 @@ class SemanticSegmentationTrainer:
         params = [p for p in self.model.parameters() if p.requires_grad]
         self.optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay)
 
-        # Scheduler
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=t_max, eta_min=eta_min
-        )
+        # ------------------------------------------------------------------
+        # Scheduler — linear warm-up → cosine annealing.
+        #
+        # The previous implementation used a bare CosineAnnealingLR that
+        # started at the full LR from step 0. With a randomly-initialised
+        # segmentation head on top of a pretrained backbone (and *especially*
+        # a transformer encoder) this produces large, noisy gradients in the
+        # first epochs that corrupt the pretrained features before the head
+        # has stabilised. We now warm the LR up linearly for `warmup_epochs`,
+        # then cosine-anneal over the REMAINING epochs so the schedule still
+        # reaches `eta_min` exactly at the final epoch.
+        # ------------------------------------------------------------------
+        self.warmup_epochs = max(0, int(warmup_epochs))
+        if self.warmup_epochs > 0:
+            warmup = torch.optim.lr_scheduler.LinearLR(
+                self.optimizer,
+                start_factor=1e-3,            # start at 0.1% of base LR
+                end_factor=1.0,
+                total_iters=self.warmup_epochs,
+            )
+            cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer,
+                T_max=max(1, t_max - self.warmup_epochs),   # account for warm-up
+                eta_min=eta_min,
+            )
+            self.scheduler = torch.optim.lr_scheduler.SequentialLR(
+                self.optimizer,
+                schedulers=[warmup, cosine],
+                milestones=[self.warmup_epochs],
+            )
+        else:
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=t_max, eta_min=eta_min
+            )
 
         # Loss
         self.criterion = CombinedLoss(
