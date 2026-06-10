@@ -48,8 +48,11 @@ class Trainer:
         checkpoint_dir: str   = "checkpoints",
         t_max: int   = 50,
         eta_min: float = 1e-6,
+        criterion: nn.Module | None = None,
+        use_amp: bool = True,
+        amp_init_scale: float = 2 ** 16,
     ):
-        
+
         self.model = model.to(device)
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -57,6 +60,13 @@ class Trainer:
         self.num_epochs = num_epochs
         self.patience = patience
         self.checkpoint_dir = checkpoint_dir
+
+        # Mixed precision: enabled only on CUDA and when use_amp is True.
+        # Set use_amp=False to train in full FP32 — eliminates FP16 gradient
+        # overflow (the "norm=inf — scaler self-correcting" messages) entirely,
+        # at the cost of speed/memory. A lower amp_init_scale reduces the number
+        # of early-iteration overflows while keeping AMP enabled.
+        self.amp_enabled = bool(use_amp) and device.type == "cuda"
         
         os.makedirs(checkpoint_dir, exist_ok=True)
         
@@ -74,15 +84,21 @@ class Trainer:
             eta_min=eta_min
         )
         
-        # loss
-        self.criterion = CombinedLoss(
-            class_weights=CLASS_WEIGHTS,
-            num_classes=NUM_CLASSES,
-            ignore_index=IGNORE_INDEX
+        # loss — caller may inject a custom criterion (e.g. focal-enabled
+        # CombinedLoss); otherwise fall back to the default CE+Dice combo so
+        # existing callers are unaffected.
+        self.criterion = (
+            criterion
+            if criterion is not None
+            else CombinedLoss(
+                class_weights=CLASS_WEIGHTS,
+                num_classes=NUM_CLASSES,
+                ignore_index=IGNORE_INDEX,
+            )
         ).to(device)
         
-        # FP16 scaler
-        self.scaler = GradScaler(enabled=device.type == "cuda")
+        # FP16 scaler (init_scale lowered => fewer early overflow/skip events)
+        self.scaler = GradScaler(enabled=self.amp_enabled, init_scale=amp_init_scale)
         
         # metrics
         self.train_metrics = SegmentationMetrics(device=device)
@@ -222,7 +238,7 @@ class Trainer:
                     targets = batch["label"].to(self.device)
                     with autocast(
                         device_type=self.device.type,
-                        enabled=self.device.type == "cuda"
+                        enabled=self.amp_enabled
                     ):
                         logits = self.model(image)
                     self.val_metrics.update(logits, targets)
@@ -294,7 +310,7 @@ class Trainer:
             self.optimizer.zero_grad()
 
             # forward + loss under FP16 
-            with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
+            with autocast(device_type=self.device.type, enabled=self.amp_enabled):
                 logits = self.model(image)
                 loss_output = self.criterion(logits, targets)
                 if len(loss_output) == 4:
@@ -400,7 +416,7 @@ class Trainer:
             image = batch["image"].to(self.device)    # (B,3,H,W) — post-disaster
             targets = batch["label"].to(self.device)  # (B,H,W) long
 
-            with autocast(device_type=self.device.type, enabled=self.device.type == "cuda"):
+            with autocast(device_type=self.device.type, enabled=self.amp_enabled):
                 logits = self.model(image)
                 loss_output = self.criterion(logits, targets)
                 # Handle both old (3-tuple) and new (4-tuple) loss formats
@@ -453,12 +469,16 @@ class Trainer:
         path = os.path.join(self.checkpoint_dir, "UNet.pth")
         torch.save(
             {
-                "epoch":        epoch,
-                "model_state":  self.model.state_dict(),
-                "optim_state":  self.optimizer.state_dict(),
-                "sched_state":  self.scheduler.state_dict(),
-                "scaler_state": self.scaler.state_dict(),
-                "val_mean_iou": val_mean_iou,
+                "epoch":            epoch,
+                "model_state":      self.model.state_dict(),
+                "optim_state":      self.optimizer.state_dict(),
+                "sched_state":      self.scheduler.state_dict(),
+                "scaler_state":     self.scaler.state_dict(),
+                "val_mean_iou":     val_mean_iou,
+                # Persist full training state so a resumed run can continue the
+                # curves seamlessly instead of starting an empty history.
+                "history":          self.history,
+                "epochs_no_improve": self.epochs_no_improve,
             },
             path,
         )
@@ -483,13 +503,25 @@ class Trainer:
         """
         
         ckpt = torch.load(path, map_location=self.device, weights_only=True)
-        
+
         self.model.load_state_dict(ckpt["model_state"])
         self.optimizer.load_state_dict(ckpt["optim_state"])
         self.scheduler.load_state_dict(ckpt["sched_state"])
         self.scaler.load_state_dict(ckpt["scaler_state"])
         self.best_mean_iou = ckpt["val_mean_iou"]
-        
+
+        # Restore prior history / early-stopping counter when present so the
+        # resumed run continues the same training curves. Older checkpoints
+        # saved before this change simply won't have these keys.
+        self.history = ckpt.get("history", [])
+        self.epochs_no_improve = ckpt.get("epochs_no_improve", 0)
+        if self.history:
+            print(f"  Restored {len(self.history)} epochs of history "
+                  f"(curves will continue from epoch {self.history[-1]['epoch']}).")
+        else:
+            print("  No history stored in checkpoint — new curves will only "
+                  "cover the resumed epochs.")
+
         print(f"Loaded checkpoint from {path}  (val mean_iou={self.best_mean_iou:.4f})")
         return ckpt["epoch"]
     

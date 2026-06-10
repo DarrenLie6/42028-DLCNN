@@ -1,0 +1,54 @@
+# Siamese Attention U-Net (ResNet-34) configuration for xView2
+# Bi-temporal: pre + post disaster images, focal-enabled loss.
+
+data:
+  dataset:        xview
+  root_dir:       data/xView2/geotiffs   # root containing tier1/tier3/hold/test
+  tile_size:      256                     # resize tiles to 256x256
+  num_classes:    4                       # 0:Background 1:Intact 2:Damaged 3:Destroyed
+
+# Augmentation (applied identically to pre and post)
+augmentation:
+  horizontal_flip_p:    0.5
+  vertical_flip_p:      0.5
+  rotate_90_p:          0.5
+  brightness_contrast:
+    brightness_limit:   0.2
+    contrast_limit:     0.2
+    p:                  0.4
+  gaussian_noise_p:     0.3
+  elastic_transform_p:  0.2
+  coarse_dropout_p:     0.3
+
+# Model
+model:
+  backbone:              resnet34
+  pretrained:            true
+  dropout_p:             0.2
+  freeze_encoder_bn:     false    # set true for extra stability with small batches
+
+# Loss (focal enabled) — moderate weights to keep gradients controlled
+loss:
+  class_weights:         [0.5, 5.0, 9.0, 13.0]
+  ce_weight:             0.4
+  dice_weight:           0.3
+  focal_weight:          0.3
+  focal_gamma:           2.0
+
+# Training — shorter horizon + strong weight decay to curb the overfitting
+# seen in the from-scratch Attention U-Net.
+training:
+  epochs:                200
+  batch_size:            8
+  num_workers:           4
+  learning_rate:         1.0e-4
+  weight_decay:          1.0e-2
+  min_lr:                1.0e-6
+  patience:              50
+  checkpoint_dir:        checkpoints/siamese_unet
+  # Mixed precision. use_amp:false trains in FP32 and removes the
+  # "norm=inf — scaler self-correcting" messages entirely (slower, more VRAM).
+  # With AMP on, a lower amp_init_scale means fewer early overflow/skip events.
+
+  # use_amp:               true
+  # amp_init_scale:        8192        # 2**13 (default GradScaler uses 65536)
