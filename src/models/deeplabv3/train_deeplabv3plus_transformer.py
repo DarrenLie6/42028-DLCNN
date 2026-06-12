@@ -20,9 +20,14 @@ from src.models.deeplabv3 import SemanticSegmentationXViewDataset
 from src.models.deeplabv3.deeplabv3plus_transformer import build_transformer_semantic_model
 from src.models.deeplabv3.deeplabv3_trainer import SemanticSegmentationTrainer
 from src.data.augmentation_utils import build_train_aug, build_val_aug
+from src.data.siamese_xview2_dataset import (
+    SiameseXViewDataset,
+    build_siamese_train_aug,
+    build_siamese_val_aug,
+)
 
 
-def main(config_path: str):
+def main(config_path: str, resume: str | None = None):
     cfg = OmegaConf.load(config_path)
     print("[Config]")
     print(OmegaConf.to_yaml(cfg))
@@ -30,17 +35,30 @@ def main(config_path: str):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n[Device] Using: {device}")
 
-    # ---- Data ------------------------------------------------------------
-    print("\n[Data] Building datasets...")
-    train_aug = build_train_aug(cfg)
-    val_aug = build_val_aug(cfg)
+    bitemporal = bool(cfg.model.get("bitemporal", False))
 
-    train_dataset = SemanticSegmentationXViewDataset(
-        root_dir=cfg.data.root_dir, cfg=cfg, mode="train", transform=train_aug,
-    )
-    val_dataset = SemanticSegmentationXViewDataset(
-        root_dir=cfg.data.root_dir, cfg=cfg, mode="val", transform=val_aug,
-    )
+    # ---- Data ------------------------------------------------------------
+    # Bi-temporal: load 6-channel [pre|post] tiles with geometry-locked augs so
+    # pre and post stay pixel-registered. Single-input: post-only 3-channel.
+    print(f"\n[Data] Building datasets (bitemporal={bitemporal})...")
+    if bitemporal:
+        train_dataset = SiameseXViewDataset(
+            root_dir=cfg.data.root_dir, cfg=cfg, mode="train",
+            transform=build_siamese_train_aug(cfg),
+        )
+        val_dataset = SiameseXViewDataset(
+            root_dir=cfg.data.root_dir, cfg=cfg, mode="val",
+            transform=build_siamese_val_aug(cfg),
+        )
+    else:
+        train_dataset = SemanticSegmentationXViewDataset(
+            root_dir=cfg.data.root_dir, cfg=cfg, mode="train",
+            transform=build_train_aug(cfg),
+        )
+        val_dataset = SemanticSegmentationXViewDataset(
+            root_dir=cfg.data.root_dir, cfg=cfg, mode="val",
+            transform=build_val_aug(cfg),
+        )
     print(f"  Train: {len(train_dataset)} samples")
     print(f"  Val:   {len(val_dataset)} samples")
 
@@ -64,12 +82,15 @@ def main(config_path: str):
         aux_loss=cfg.model.get("aux_loss", True),
         pretrained=pretrained,
         timm_backbone=timm_backbone,
+        bitemporal=bitemporal,
         device=device,
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  Trainable params: {n_params:,}")
 
     # ---- Trainer ---------------------------------------------------------
+    # Loss config (focal can be enabled for the extreme class imbalance).
+    lc = cfg.get("loss", {})
     print("\n[Trainer] Initializing...")
     trainer = SemanticSegmentationTrainer(
         model=model,
@@ -84,10 +105,20 @@ def main(config_path: str):
         t_max=cfg.training.epochs,
         eta_min=cfg.training.min_lr,
         warmup_epochs=cfg.training.get("warmup_epochs", 5),
+        class_weights=list(lc["class_weights"]) if lc.get("class_weights") is not None else None,
+        ce_weight=lc.get("ce_weight", 0.5),
+        dice_weight=lc.get("dice_weight", 0.5),
+        focal_weight=lc.get("focal_weight", 0.0),
+        use_focal=lc.get("use_focal", False),
     )
 
+    # ---- Resume (optional) ----------------------------------------------
+    start_epoch = 0
+    if resume:
+        start_epoch = trainer.load_checkpoint(resume)
+
     print("\n[Training] Starting...")
-    history = trainer.fit(start_epoch=0)
+    history = trainer.fit(start_epoch=start_epoch)
 
     print("\n✓ Training complete!")
     print(f"  Best mean IoU: {trainer.best_mean_iou:.4f}")
@@ -105,5 +136,12 @@ if __name__ == "__main__":
         default="configs/deeplabv3plus_transformer_config.yaml",
         help="Path to config YAML file",
     )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Path to a latest.pth checkpoint to resume training from "
+             "(e.g. checkpoints/semantic_seg_transformer/latest.pth)",
+    )
     args = parser.parse_args()
-    main(args.config)
+    main(args.config, resume=args.resume)

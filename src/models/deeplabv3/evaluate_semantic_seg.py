@@ -209,8 +209,12 @@ def evaluate(
             preds = logits.argmax(dim=1)  # (B, H, W)
 
             for i, stem in enumerate(stems):
-                # Convert image tensor → (H, W, 3) numpy for visualisation
-                img_np = images[i].cpu().numpy().transpose(1, 2, 0)
+                # Convert image tensor → (H, W, 3) numpy for visualisation.
+                # Bi-temporal inputs are 6ch [pre|post]; show the post half.
+                img_t = images[i]
+                if img_t.shape[0] == 6:
+                    img_t = img_t[3:]
+                img_np = img_t.cpu().numpy().transpose(1, 2, 0)
                 img_np = np.clip(img_np, 0.0, 1.0)
 
                 all_predictions.append({

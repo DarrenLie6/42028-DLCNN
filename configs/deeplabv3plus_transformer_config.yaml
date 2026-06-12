@@ -25,16 +25,26 @@ augmentation:
 # Model configuration
 model:
   variant:               b1              # MiT encoder size: b0 (light) | b1 | b2 (large)
-  pretrained:            true            # load ImageNet-pretrained timm backbone 
+  pretrained:            true            # load ImageNet-pretrained timm backbone
   timm_backbone:         null            # optional override, e.g. pvt_v2_b1 / pvt_v2_b2 / mit_b1; null = auto by variant
   aux_loss:              true            # auxiliary deep-supervision head
+  bitemporal:            true            # true = 6ch [pre|post] Siamese change detection; false = post-only 3ch
   num_classes:           4
+
+# Loss configuration — focal enabled for the extreme class imbalance
+# (Background ~86% vs Destroyed ~0.9%). Matches the Siamese U-Net recipe.
+loss:
+  use_focal:             true
+  ce_weight:             0.4
+  dice_weight:           0.3
+  focal_weight:          0.3
+  class_weights:         [0.5, 5.0, 7.0, 10.0]   # [Background, Intact, Damaged, Destroyed]
 
 # Training configuration
 training:
   epochs:                350
   warmup_epochs:         10              # linear LR warm-up (critical for transformers)
-  batch_size:            8               # lower to 4/2 if OOM (transformer attention is memory-heavy)
+  batch_size:            4               # bi-temporal runs the encoder twice; 4 fits 512px. Raise to 6/8 if VRAM allows.
   learning_rate:         6.0e-5          # transformers prefer a smaller peak LR than CNNs
   weight_decay:          1.0e-2          # AdamW decay; higher for transformers
   min_lr:                1.0e-6

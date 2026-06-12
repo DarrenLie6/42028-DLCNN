@@ -199,9 +199,9 @@ class OverlapPatchEmbed(nn.Module):
         return x, H, W
 
 
-# ----------------------------------------------------------------------------
+
 # MiT (Mix Vision Transformer) encoder
-# ----------------------------------------------------------------------------
+
 class MiTEncoder(nn.Module):
     """
     Hierarchical transformer encoder producing 4 multi-scale feature maps at
@@ -403,13 +403,35 @@ class FCNAuxHead(nn.Sequential):
         )
 
 
-# ----------------------------------------------------------------------------
-# Pretrained encoder via timm (optional)
-# ----------------------------------------------------------------------------
-# Variant → default timm backbone. PVTv2 (`pvt_v2_b*`) is architecturally the
-# same family as SegFormer's MiT (overlapping patch embed + spatial-reduction
-# attention + convolutional FFN) and ships reliable ImageNet-pretrained weights
-# in timm, including `features_only` support. Channel dims match MiT exactly.
+# Bi-temporal change fusion
+class SiameseFusion(nn.Module):
+    """
+    Fuse pre/post encoder features at one scale into a single feature map.
+
+    Concatenates [pre, post, |pre - post|] and projects back to ``ch`` channels.
+    The absolute difference injects the explicit change signal that defines
+    building damage, while the following BatchNorm bounds activation magnitude
+    for stable gradients. This mirrors the fusion proven on the Siamese
+    Attention U-Net (`siamese_attention_unet.SiameseFusion`).
+    """
+
+    def __init__(self, ch: int):
+        super().__init__()
+        self.fuse = nn.Sequential(
+            nn.Conv2d(ch * 3, ch, kernel_size=1, bias=False),
+            nn.BatchNorm2d(ch),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, pre: torch.Tensor, post: torch.Tensor) -> torch.Tensor:
+        diff = torch.abs(pre - post)
+        return self.fuse(torch.cat([pre, post, diff], dim=1))
+
+
+
+# Pretrained encoder via timm 
+
+# backbone varients
 DEFAULT_TIMM_BACKBONE = {
     "b0": "pvt_v2_b0",
     "b1": "pvt_v2_b1",
@@ -461,6 +483,17 @@ class TransformerDeepLabV3Plus(nn.Module):
     """
     DeepLabV3+ with a Mix-Vision-Transformer (SegFormer) encoder.
 
+    Two input modes:
+      * Single-input (``bitemporal=False``, default): a 3-channel post-disaster
+        image. The original behaviour — left intact so prior runs/checkpoints
+        stay valid.
+      * Bi-temporal (``bitemporal=True``): a 6-channel ``[pre | post]`` image.
+        A single shared encoder (Siamese, weight-tied) encodes pre and post
+        separately; features are fused per scale via :class:`SiameseFusion`
+        ([pre, post, |pre-post|]) before the DeepLabV3+ decoder. This injects
+        the change signal that defines building damage and is the recommended
+        mode for xView2.
+
     Output: dict with
         'out' — (B, num_classes, H, W) logits at the input resolution
         'aux' — (B, num_classes, H, W) auxiliary logits (training-time deep
@@ -478,6 +511,7 @@ class TransformerDeepLabV3Plus(nn.Module):
         aux_loss: bool = True,
         pretrained: bool = False,
         timm_backbone: str | None = None,
+        bitemporal: bool = False,
     ):
         super().__init__()
         if variant not in MIT_CONFIGS:
@@ -485,17 +519,27 @@ class TransformerDeepLabV3Plus(nn.Module):
 
         self.num_classes = num_classes
         self.variant = variant
+        self.bitemporal = bitemporal
+
+        # Each Siamese stream still consumes a 3-channel image, so the encoder
+        # is built with in_ch=3 and ImageNet-pretrained weights load cleanly.
+        encoder_in_ch = 3 if bitemporal else in_ch
 
         # Build the encoder. With pretrained=True we use an ImageNet-pretrained
-        # timm backbone; if timm is unavailable we transparently fall back to the
-        # from-scratch MiT encoder. `feat_ch` is the 4 stage channel counts
+        # timm backbone; if timm is unavailable we transparently fall back to train from scratch
         # (strides 4/8/16/32), used to size the decoder for whichever encoder.
         self.encoder, feat_ch, self.encoder_kind = self._build_encoder(
             variant=variant,
-            in_ch=in_ch,
+            in_ch=encoder_in_ch,
             drop_path_rate=drop_path_rate,
             pretrained=pretrained,
             timm_backbone=timm_backbone,
+        )
+
+        # Per-scale change fusion (bi-temporal only). One fusion block per
+        # encoder stage; each preserves that stage's channel count.
+        self.fusions = (
+            nn.ModuleList([SiameseFusion(c) for c in feat_ch]) if bitemporal else None
         )
 
         # DeepLabV3+: ASPP on deepest features (stride 32, feat_ch[3]),
@@ -552,7 +596,23 @@ class TransformerDeepLabV3Plus(nn.Module):
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         input_size = x.shape[-2:]
-        c1, c2, c3, c4 = self.encoder(x)   # strides 4, 8, 16, 32
+
+        if self.bitemporal:
+            # x: (B, 6, H, W) = [pre(3) | post(3)]. Shared encoder over both,
+            # then per-scale change fusion.
+            if x.shape[1] != 6:
+                raise ValueError(
+                    f"bitemporal=True expects a 6-channel [pre|post] input, "
+                    f"got {x.shape[1]} channels."
+                )
+            pre, post = x[:, :3], x[:, 3:]
+            fp = self.encoder(pre)             # 4 maps, strides 4/8/16/32
+            fq = self.encoder(post)            # shared weights (Siamese)
+            feats = [fuse(p, q) for fuse, p, q in zip(self.fusions, fp, fq)]
+        else:
+            feats = self.encoder(x)            # 4 maps, strides 4/8/16/32
+
+        c1, c2, c3, c4 = feats
 
         out = self.decoder(low=c1, high=c4)
         out = F.interpolate(out, size=input_size, mode="bilinear", align_corners=False)
@@ -581,6 +641,7 @@ def build_transformer_semantic_model(
     aux_loss: bool = True,
     pretrained: bool = True,
     timm_backbone: str | None = None,
+    bitemporal: bool = False,
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> TransformerDeepLabV3Plus:
     """
@@ -593,8 +654,10 @@ def build_transformer_semantic_model(
         pretrained:    If True, load an ImageNet-pretrained timm backbone
                        (recommended). Falls back to a from-scratch MiT encoder
                        if `timm` is not installed.
-        timm_backbone: Explicit timm model name (e.g. 'pvt_v2_b2', 'mit_b1').
+        timm_backbone: Explicit timm model name.
                        Defaults to the PVTv2 model matching `variant`.
+        bitemporal:    If True, expect a 6-channel [pre|post] input and fuse
+                       pre/post features per scale (Siamese change detection).
         device:        Device to place the model on
 
     Returns:
@@ -606,5 +669,8 @@ def build_transformer_semantic_model(
         aux_loss=aux_loss,
         pretrained=pretrained,
         timm_backbone=timm_backbone,
+        bitemporal=bitemporal,
     ).to(device)
+    mode = "bi-temporal [pre|post]" if bitemporal else "single-input [post]"
+    print(f"[model] TransformerDeepLabV3Plus mode: {mode}")
     return model

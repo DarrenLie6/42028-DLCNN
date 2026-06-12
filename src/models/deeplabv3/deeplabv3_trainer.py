@@ -53,6 +53,11 @@ class SemanticSegmentationTrainer:
         t_max: int = 50,
         eta_min: float = 1e-6,
         warmup_epochs: int = 5,
+        class_weights: list | None = None,
+        ce_weight: float = 0.5,
+        dice_weight: float = 0.5,
+        focal_weight: float = 0.0,
+        use_focal: bool = False,
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -103,12 +108,23 @@ class SemanticSegmentationTrainer:
                 self.optimizer, T_max=t_max, eta_min=eta_min
             )
 
-        # Loss
+        # Loss — configurable so focal can be enabled for the extreme class
+        # imbalance (Background ~86% vs Destroyed ~0.9%). When use_focal is
+        # True the CombinedLoss returns a 4-tuple; _extract_loss handles both.
         self.criterion = CombinedLoss(
-            class_weights=CLASS_WEIGHTS,
+            class_weights=class_weights if class_weights is not None else CLASS_WEIGHTS,
             num_classes=NUM_CLASSES,
             ignore_index=IGNORE_INDEX,
+            ce_weight=ce_weight,
+            dice_weight=dice_weight,
+            focal_weight=focal_weight,
+            use_focal=use_focal,
         ).to(device)
+        print(
+            f"[loss] CombinedLoss(ce={ce_weight}, dice={dice_weight}, "
+            f"focal={focal_weight}, use_focal={use_focal}) "
+            f"weights={class_weights if class_weights is not None else CLASS_WEIGHTS}"
+        )
 
         # FP16 scaler
         self.scaler = GradScaler(enabled=device.type == "cuda")
@@ -285,6 +301,10 @@ class SemanticSegmentationTrainer:
             self._update_curves(epoch, train_stats, val_stats)
             print(f"  📈 Curves saved → {self._curve_png}")
 
+            # Full-state checkpoint every epoch so training can resume exactly
+            # where it stopped (model + optimizer + scheduler + scaler + curves).
+            self._save_full_state(epoch)
+
             # Early stopping
             if epoch > 10 and self.epochs_no_improve >= self.patience:
                 print(
@@ -410,3 +430,68 @@ class SemanticSegmentationTrainer:
             ckpt_path,
         )
         print(f"  ✓ Checkpoint saved: {ckpt_path}")
+
+    # ------------------------------------------------------------------
+    # Resume support — full-state checkpoint written every epoch
+    # ------------------------------------------------------------------
+    def _save_full_state(self, epoch: int) -> None:
+        """
+        Write a single rolling 'latest.pth' with everything needed to resume
+        training byte-for-byte: weights, optimizer, scheduler, AMP scaler,
+        early-stopping counters and the accumulated training-curve history.
+        Overwrites each epoch so it always reflects the most recent epoch.
+        """
+        path = os.path.join(self.checkpoint_dir, "latest.pth")
+        torch.save(
+            {
+                "epoch": epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "scheduler_state_dict": self.scheduler.state_dict(),
+                "scaler_state_dict": self.scaler.state_dict(),
+                "best_mean_iou": self.best_mean_iou,
+                "epochs_no_improve": self.epochs_no_improve,
+                "curve": self._curve,
+                "history": self.history,
+            },
+            path,
+        )
+        print(f"  💾 Full state saved → {path}  (resume from epoch {epoch})")
+
+    def load_checkpoint(self, path: str) -> int:
+        """
+        Restore full trainer state from a 'latest.pth' (or compatible)
+        checkpoint and return the epoch to resume *after*.
+
+        Pass the returned value as `fit(start_epoch=...)`; training then
+        continues at epoch+1 and the training-curve PNG extends the existing
+        history instead of starting over.
+        """
+        ckpt = torch.load(path, map_location=self.device, weights_only=False)
+
+        self.model.load_state_dict(ckpt["model_state_dict"])
+        if "optimizer_state_dict" in ckpt:
+            self.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+        if "scheduler_state_dict" in ckpt:
+            self.scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        if ckpt.get("scaler_state_dict") is not None:
+            self.scaler.load_state_dict(ckpt["scaler_state_dict"])
+
+        # Restore early-stopping + best-metric state (fall back gracefully for
+        # older best-only checkpoints that only store 'mean_iou').
+        self.best_mean_iou = ckpt.get("best_mean_iou", ckpt.get("mean_iou", 0.0))
+        self.epochs_no_improve = ckpt.get("epochs_no_improve", 0)
+
+        # Restore curve history so the PNG/JSON continue unbroken.
+        if "curve" in ckpt and isinstance(ckpt["curve"], dict):
+            self._curve = ckpt["curve"]
+        if "history" in ckpt and isinstance(ckpt["history"], list):
+            self.history = ckpt["history"]
+
+        epoch = int(ckpt.get("epoch", 0))
+        print(
+            f"  ↻ Resumed from {path} | epoch={epoch} | "
+            f"best_mean_iou={self.best_mean_iou:.4f} | "
+            f"curve points restored={len(self._curve.get('epochs', []))}"
+        )
+        return epoch

@@ -24,15 +24,83 @@ Usage:
 
 from __future__ import annotations
 import argparse
+import numpy as np
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.models.deeplabv3 import SemanticSegmentationXViewDataset
 from src.models.deeplabv3.deeplabv3plus_transformer import build_transformer_semantic_model
+from src.data.siamese_xview2_dataset import SiameseXViewDataset
+from src.training.metrics import SegmentationMetrics
 
 # Reuse the baseline's model-agnostic evaluation + plotting pipeline.
-from src.models.deeplabv3.evaluate_semantic_seg import evaluate, NUM_CLASSES
+from src.models.deeplabv3.evaluate_semantic_seg import (
+    evaluate, save_results, NUM_CLASSES, IGNORE_INDEX, LABEL_NAMES,
+)
+
+
+def evaluate_bitemporal(
+    model: torch.nn.Module,
+    data_loader: DataLoader,
+    device: torch.device,
+    save_dir: str,
+) -> dict:
+    """
+    Bi-temporal variant of the shared `evaluate()`.
+
+    Identical metrics/reporting, but the input is a 6-channel [pre|post] tensor,
+    so for visualisation we keep only the POST-disaster channels (3:6) — the
+    shared evaluator's 3-channel imshow path cannot render 6 channels.
+    """
+    model.eval()
+    metrics = SegmentationMetrics(
+        num_classes=NUM_CLASSES, ignore_index=IGNORE_INDEX, device=device,
+    )
+    all_predictions = []
+
+    print("\n[Evaluation] Running inference (bi-temporal)...")
+    with torch.no_grad():
+        for batch in tqdm(data_loader):
+            images = batch["image"].to(device)   # (B, 6, H, W) = [pre | post]
+            labels = batch["label"].to(device)
+            stems  = batch["stem"]
+
+            logits = model(images)["out"]
+            metrics.update(logits, labels)
+            preds = logits.argmax(dim=1)
+
+            for i, stem in enumerate(stems):
+                # Visualise the POST image only (channels 3:6), already in [0,1].
+                post_np = images[i, 3:].cpu().numpy().transpose(1, 2, 0)
+                post_np = np.clip(post_np, 0.0, 1.0)
+                all_predictions.append({
+                    "stem":   stem,
+                    "image":  post_np,
+                    "pred":   preds[i].cpu().numpy(),
+                    "gt":     labels[i].cpu().numpy(),
+                    "logits": logits[i].float().cpu().numpy(),
+                })
+
+    results = metrics.compute()
+
+    print("\n[Results] Per-Class Metrics:")
+    print("-" * 60)
+    print(f"{'Class':<15} {'IoU':>10} {'F1':>10} {'Acc':>10}")
+    print("-" * 60)
+    for class_idx, class_name in LABEL_NAMES.items():
+        iou = results.get(f"iou/{class_name}", 0.0)
+        f1  = results.get(f"f1/{class_name}",  0.0)
+        acc = results.get(f"acc/{class_name}", 0.0)
+        print(f"{class_name:<15} {iou:>10.4f} {f1:>10.4f} {acc:>10.4f}")
+    print("-" * 60)
+    print(f"{'Mean':<15} {results['mean_iou']:>10.4f} "
+          f"{results['mean_f1']:>10.4f} {results['mean_acc']:>10.4f}")
+    print("-" * 60)
+
+    save_results(results, all_predictions, save_dir)
+    return results
 
 
 def load_transformer_checkpoint(
@@ -58,6 +126,7 @@ def load_transformer_checkpoint(
     aux_loss      = cfg.model.get("aux_loss", True)
     pretrained    = cfg.model.get("pretrained", True)
     timm_backbone = cfg.model.get("timm_backbone", None)
+    bitemporal    = bool(cfg.model.get("bitemporal", False))
 
     model = build_transformer_semantic_model(
         num_classes=NUM_CLASSES,
@@ -65,6 +134,7 @@ def load_transformer_checkpoint(
         aux_loss=aux_loss,
         pretrained=pretrained,        # rebuilds the SAME encoder structure
         timm_backbone=timm_backbone,
+        bitemporal=bitemporal,        # MUST match training (adds fusion blocks)
         device=device,
     )
 
@@ -116,8 +186,12 @@ def main(
     cfg   = OmegaConf.load(config_path)
     model = load_transformer_checkpoint(checkpoint_path, device, cfg)
 
-    print(f"\n[Data] Building {split} dataset...")
-    dataset = SemanticSegmentationXViewDataset(
+    bitemporal = bool(cfg.model.get("bitemporal", False))
+    print(f"\n[Data] Building {split} dataset (bitemporal={bitemporal})...")
+    # Bi-temporal models need the 6-channel [pre|post] loader; single-input
+    # models use the post-only loader. No augmentation at eval either way.
+    dataset_cls = SiameseXViewDataset if bitemporal else SemanticSegmentationXViewDataset
+    dataset = dataset_cls(
         root_dir=cfg.data.root_dir,
         cfg=cfg,
         mode=split,
@@ -131,7 +205,12 @@ def main(
         num_workers=cfg.training.num_workers,
     )
 
-    results = evaluate(model, loader, device, output_dir)
+    # Bi-temporal input (6ch) needs the post-only-visualisation path; the shared
+    # 3-channel evaluate() handles the single-input case.
+    if bitemporal:
+        results = evaluate_bitemporal(model, loader, device, output_dir)
+    else:
+        results = evaluate(model, loader, device, output_dir)
 
     print("\n✓ Evaluation complete!")
     print(f"  Results saved to: {output_dir}")
