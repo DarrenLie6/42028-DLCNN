@@ -113,7 +113,7 @@ COLOR_MAP = {
     0: [0, 0, 0, 0],          # background (transparent)
     1: [46, 204, 113, 150],   # intact (green)
     2: [241, 196, 15, 150],   # damaged (yellow)
-    3: [230, 126, 34, 150],   # destroyed (orange)
+    3: [231, 76, 60, 150],    # destroyed (red)
 }
 
 
@@ -209,6 +209,21 @@ else:
     ready = post_file is not None
     missing_msg = "Please upload a post-event satellite image to begin the assessment."
 
+# Image preview
+if post_file is not None:
+    st.write("**Preview:**")
+    if use_bitemporal and pre_file is not None:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(load_image_from_bytes(pre_file.getvalue(), pre_file.name), 
+                    caption="Pre-Event", use_container_width=True)
+        with col2:
+            st.image(load_image_from_bytes(post_file.getvalue(), post_file.name), 
+                    caption="Post-Event", use_container_width=True)
+    else:
+        st.image(load_image_from_bytes(post_file.getvalue(), post_file.name), 
+                caption="Post-Event", use_container_width=True)
+
 st.write("---")
 st.subheader("Run Assessment")
 
@@ -229,8 +244,26 @@ if ready:
             buf.seek(0)
 
         st.write("---")
-        st.subheader("Step 4: Assessment Results")
+        st.subheader("Step 3: Assessment Results")
         st.image(result_map, caption=f"Damage Map Overlay — {mode} model", use_container_width=True)
+
+        # Damage statistics
+        st.write("---")
+        st.subheader("Damage Statistics")
+
+        total_pixels = mask.size
+        class_names  = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
+        class_colors = {1: "🟩", 2: "🟨", 3: "🟥"}
+
+        cols = st.columns(3)
+        for i, (class_idx, name) in enumerate([(1, "Intact"), (2, "Damaged"), (3, "Destroyed")]):
+            count      = int((mask == class_idx).sum())
+            percentage = (count / total_pixels) * 100
+            with cols[i]:
+                st.metric(
+                    label=f"{class_colors[class_idx]} {name}",
+                    value=f"{percentage:.1f}%",
+                )
 
         st.markdown(
             "**Map Legend:** 🟩 **Intact** &nbsp;&nbsp; 🟨 **Damaged** &nbsp;&nbsp; 🟥 **Destroyed**"
