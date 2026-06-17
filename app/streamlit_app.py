@@ -14,14 +14,15 @@ sys.path.append(str(ROOT_DIR))
 
 from app.inference import DamageAssessor, find_best_checkpoint
 
-st.set_page_config(page_title="ImpactVision", layout="centered")
+st.set_page_config(
+    page_title="ImpactVision",
+    layout="wide",
+    page_icon="🛰️"
+)
 
-
-
-#   https://raw.githubusercontent.com/<user>/<repo>/<commit>/<path>
 BACKGROUND_URL = (
     "https://raw.githubusercontent.com/DarrenLie6/42028-DLCNN/"
-    "master/app/assets/2.jpg"
+    "master/app/assets/4.jpg"
 )
 
 
@@ -35,49 +36,65 @@ def _find_background() -> Path | None:
 
 
 def apply_theme(card_opacity: float = 0.92) -> None:
-    bg = _find_background()
-    if bg is not None:
-        # Local file → embed inline (most reliable, works offline)
-        ext = bg.suffix.lstrip(".").lower()
-        mime = "jpeg" if ext == "jpg" else ext
-        b64 = base64.b64encode(bg.read_bytes()).decode()
-        image_src = f"data:image/{mime};base64,{b64}"
-    elif BACKGROUND_URL:
-        # Remote image (must be a direct image URL)
-        image_src = BACKGROUND_URL
-    else:
-        image_src = None
+    # bg = _find_background()
+    # if bg is not None:
+    #     ext = bg.suffix.lstrip(".").lower()
+    #     mime = "jpeg" if ext == "jpg" else ext
+    #     b64 = base64.b64encode(bg.read_bytes()).decode()
+    #     image_src = f"data:image/{mime};base64,{b64}"
+    # elif BACKGROUND_URL:
+    #     image_src = BACKGROUND_URL
+    # else:
+    #     image_src = None
 
-    if image_src is not None:
-        background_rule = (
-            f'background-image: url("{image_src}");'
-            "background-size: cover;"
-            "background-position: center;"
-            "background-attachment: fixed;"
-        )
-    else:
-        # Fallback gradient so the card still stands out without any image.
-        background_rule = "background: linear-gradient(135deg, #1e3a5f 0%, #2c5364 100%);"
+    # if image_src is not None:
+    #     background_rule = (
+    #         f'background-image: url("{image_src}");'
+    #         "background-size: cover;"
+    #         "background-position: center;"
+    #         "background-attachment: fixed;"
+    #     )
+    # else:
+    background_rule = "background: linear-gradient(135deg, #1e3a5f 0%, #2c5364 100%);"
 
     st.markdown(
         f"""
         <style>
-        /* Full-page background */
         [data-testid="stAppViewContainer"] {{
             {background_rule}
         }}
-        /* Let the background show through the top header bar */
         [data-testid="stHeader"] {{
             background: rgba(0, 0, 0, 0);
         }}
-        /* White card around all content (the centred main column) */
         [data-testid="stAppViewContainer"] .block-container {{
             background: rgba(255, 255, 255, {card_opacity});
-            padding: 2.5rem 3rem 3rem 3rem;
+            padding: 2rem 2.5rem 2.5rem 2.5rem;
             border-radius: 18px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-            margin-top: 2.5rem;
-            margin-bottom: 2.5rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+            max-width: 1400px;
+        }}
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 8px;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            border-radius: 8px 8px 0 0;
+            padding: 8px 20px;
+            font-weight: 600;
+        }}
+        .result-placeholder {{
+            background: rgba(0,0,0,0.04);
+            border: 2px dashed rgba(0,0,0,0.15);
+            border-radius: 12px;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0,0,0,0.35);
+            font-size: 0.95rem;
+            gap: 0.5rem;
         }}
         </style>
         """,
@@ -87,14 +104,12 @@ def apply_theme(card_opacity: float = 0.92) -> None:
 
 apply_theme()
 
-# Checkpoint directories — the app auto-picks the best (highest-mIoU) file in each.
 BITEMPORAL_DIR = ROOT_DIR / "checkpoints" / "semantic_seg_transformer"
 POSTONLY_DIR   = ROOT_DIR / "checkpoints" / "semantic_seg_transformer_post"
 
 
 @st.cache_resource
 def load_assessor():
-    """Build the router once. Models load lazily on first use."""
     bi   = find_best_checkpoint(BITEMPORAL_DIR)
     post = find_best_checkpoint(POSTONLY_DIR)
     if bi is None or post is None:
@@ -110,17 +125,15 @@ def load_assessor():
 assessor = load_assessor()
 
 COLOR_MAP = {
-    0: [0, 0, 0, 0],          # background (transparent)
-    1: [46, 204, 113, 150],   # intact (green)
-    2: [241, 196, 15, 150],   # damaged (yellow)
-    3: [231, 76, 60, 150],    # destroyed (red)
+    0: [0, 0, 0, 0],
+    1: [46, 204, 113, 150],
+    2: [241, 196, 15, 150],
+    3: [231, 76, 60, 150],
 }
 
 
 def load_image_from_bytes(file_bytes, file_name):
-    """Load an uploaded image (GeoTIFF or standard format) as a PIL RGB image."""
     file_name_lower = file_name.lower()
-
     if file_name_lower.endswith((".tif", ".tiff")):
         with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as tmp:
             tmp.write(file_bytes)
@@ -128,8 +141,7 @@ def load_image_from_bytes(file_bytes, file_name):
         try:
             with rasterio.open(tmp_path) as src:
                 data = src.read([1, 2, 3] if src.count >= 3 else list(range(1, src.count + 1)))
-                data = np.transpose(data, (1, 2, 0))  # (H, W, C)
-
+                data = np.transpose(data, (1, 2, 0))
                 if data.dtype == np.uint8:
                     img_array = data
                 elif data.dtype == np.uint16:
@@ -140,7 +152,6 @@ def load_image_from_bytes(file_bytes, file_name):
                         img_array = ((data - data_min) / (data_max - data_min) * 255).astype(np.uint8)
                     else:
                         img_array = (data * 255).astype(np.uint8)
-
                 if img_array.shape[2] == 1:
                     return Image.fromarray(img_array[:, :, 0]).convert("RGB")
                 return Image.fromarray(img_array).convert("RGB")
@@ -151,129 +162,207 @@ def load_image_from_bytes(file_bytes, file_name):
 
 
 def overlay_mask(post_img: Image.Image, mask: np.ndarray) -> Image.Image:
-    """Composite the coloured class mask over the post image."""
     w, h = post_img.size
     rgba_mask = np.zeros((h, w, 4), dtype=np.uint8)
     for class_idx, color in COLOR_MAP.items():
         rgba_mask[mask == class_idx] = color
     mask_img = Image.fromarray(rgba_mask)
-
     bg = post_img.convert("RGBA")
     if bg.size != (w, h):
         bg = bg.resize((w, h))
     return Image.alpha_composite(bg, mask_img).convert("RGB")
 
 
-# ── UI ──────────────────────────────────────────────────────────────────────
-st.title("ImpactVision: DL Powered Satellite Damage Assessment Tool")
-st.write("---")
+def render_statistics(mask, mode):
+    building_pixels = int((mask > 0).sum())
+    if building_pixels == 0:
+        building_pixels = 1
+    intact_pct    = (int((mask == 1).sum()) / building_pixels) * 100
+    damaged_pct   = (int((mask == 2).sum()) / building_pixels) * 100
+    destroyed_pct = (int((mask == 3).sum()) / building_pixels) * 100
 
-# Step 1 — pick the model. This drives which uploaders are shown.
-st.subheader("Select Model")
-model_choice = st.radio(
-    "Choose how to assess damage:",
-    options=["Pre + Post (change detection)", "Post only"],
-    captions=[
-        "Higher accuracy — needs both a pre and post event image.",
-        "Single image — needs only the post-event image.",
-    ],
-    horizontal=True,
-)
-use_bitemporal = model_choice.startswith("Pre + Post")
-
-st.write("---")
-
-# Step 2 — uploaders matched to the selected model.
-st.subheader("Upload Satellite Imagery")
-
-if use_bitemporal:
-    col_pre, col_post = st.columns(2)
-    with col_pre:
-        st.write("**Pre-Event Image (RGB) — REQUIRED**")
-        pre_file = st.file_uploader(
-            "Drag & Drop Pre-Event", type=["png", "jpg", "jpeg", "tif", "tiff"], key="pre"
+    c1, c2, c3 = st.columns(3)
+    for col, emoji, pct, label, bg, border in [
+        (c1, "🟩", intact_pct,    "Intact",    "rgba(46,204,113,0.15)", "rgba(46,204,113,0.5)"),
+        (c2, "🟨", damaged_pct,   "Damaged",   "rgba(241,196,15,0.15)", "rgba(241,196,15,0.5)"),
+        (c3, "🟥", destroyed_pct, "Destroyed", "rgba(231,76,60,0.15)",  "rgba(231,76,60,0.5)"),
+    ]:
+        col.markdown(
+            f"""
+            <div style="
+                background:{bg};
+                border:2px solid {border};
+                border-radius:12px;
+                padding:0.8rem;
+                text-align:center;
+            ">
+                <p style="margin:0;font-size:1.5rem;">{emoji}</p>
+                <p style="margin:0;font-weight:700;font-size:1.2rem;">{pct:.1f}%</p>
+                <p style="margin:0;font-size:0.85rem;color:#555;">{label}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-    with col_post:
-        st.write("**Post-Event Image (RGB) — REQUIRED**")
-        post_file = st.file_uploader(
-            "Drag & Drop Post-Event", type=["png", "jpg", "jpeg", "tif", "tiff"], key="post_bi"
-        )
-    ready = pre_file is not None and post_file is not None
-    missing_msg = "Please upload **both** a pre-event and post-event image."
-else:
-    pre_file = None
-    st.write("**Post-Event Image (RGB) — REQUIRED**")
-    post_file = st.file_uploader(
-        "Drag & Drop Post-Event", type=["png", "jpg", "jpeg", "tif", "tiff"], key="post_only"
+
+
+def render_placeholder():
+    st.markdown(
+        """
+        <div class="result-placeholder">
+            <span style="font-size:2rem;">🗺️</span>
+            <span>Damage map will appear here</span>
+            <span style="font-size:0.8rem;">Upload an image and click Generate</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    ready = post_file is not None
-    missing_msg = "Please upload a post-event satellite image to begin the assessment."
 
-# Image preview
-if post_file is not None:
-    st.write("**Preview:**")
-    if use_bitemporal and pre_file is not None:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(load_image_from_bytes(pre_file.getvalue(), pre_file.name), 
-                    caption="Pre-Event", use_container_width=True)
-        with col2:
-            st.image(load_image_from_bytes(post_file.getvalue(), post_file.name), 
-                    caption="Post-Event", use_container_width=True)
-    else:
-        st.image(load_image_from_bytes(post_file.getvalue(), post_file.name), 
-                caption="Post-Event", use_container_width=True)
 
-st.write("---")
-st.subheader("Run Assessment")
+def render_result(result):
+    st.image(
+        result["result_map"],
+        caption=f"Damage Map — {result['mode']} model",
+        use_container_width=True
+    )
+    st.markdown(
+        "<div style='font-size:0.85rem;margin-bottom:0.8rem;'>"
+        "🟩 Intact &nbsp;&nbsp; 🟨 Damaged &nbsp;&nbsp; 🟥 Destroyed"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    render_statistics(result["mask"], result["mode"])
+    buf = io.BytesIO()
+    result["result_map"].save(buf, format="PNG")
+    buf.seek(0)
+    st.download_button(
+        label="📥 Download Damage Map",
+        data=buf.getvalue(),
+        file_name=f"damage_map_{result['name']}",
+        mime="image/png",
+        key=f"dl_{result['name']}"
+    )
 
-if ready:
-    if st.button("GENERATE COLOUR-GRADED MAP", use_container_width=True):
-        with st.spinner("Running model..."):
+
+# header
+st.title("🛰️ ImpactVision")
+st.caption("Upload post-disaster satellite imagery to generate a colour-graded building damage map.")
+
+tab_post, tab_bi = st.tabs(["Post-Only", "Pre + Post (Change Detection)"])
+
+# post only tab
+with tab_post:
+    st.subheader("Upload Imagery")
+    st.caption("Upload a post-disaster satellite image.")
+    post_file = st.file_uploader(
+        "Drag & Drop Post-Event Image",
+        type=["png", "jpg", "jpeg", "tif", "tiff"],
+        key="post_only"
+    )
+
+
+    left_col, right_col = st.columns([1, 1], gap="large")
+    
+    with left_col:
+        st.subheader("Image Preview")
+
+        if post_file is not None:
+            post_img_preview = load_image_from_bytes(post_file.getvalue(), post_file.name)
+            st.image(post_img_preview, caption=post_file.name, use_container_width=True)
+
+        run_post = st.button(
+            "🚀 GENERATE COLOUR-GRADED MAP",
+            use_container_width=True,
+            key="run_post",
+            disabled=post_file is None
+        )
+
+    with right_col:
+        st.subheader("Assessment Results")
+
+        if run_post and post_file is not None:
+            progress = st.progress(0, text="Loading image...")
             post_img = load_image_from_bytes(post_file.getvalue(), post_file.name)
-            pre_img = (
-                load_image_from_bytes(pre_file.getvalue(), pre_file.name)
-                if (use_bitemporal and pre_file is not None) else None
-            )
-
-            mask, mode = assessor.predict(post_img, pre_img)
+            progress.progress(33, text="Running model...")
+            mask, mode = assessor.predict(post_img, pre_img=None)
+            progress.progress(66, text="Generating damage map...")
             result_map = overlay_mask(post_img, mask)
+            progress.progress(100, text="Complete!")
+            progress.empty()
+            st.session_state["post_result"] = {
+                "name":       post_file.name,
+                "post_img":   post_img,
+                "result_map": result_map,
+                "mask":       mask,
+                "mode":       mode
+            }
 
-            buf = io.BytesIO()
-            result_map.save(buf, format="PNG")
-            buf.seek(0)
+        if "post_result" in st.session_state:
+            render_result(st.session_state["post_result"])
+        else:
+            render_placeholder()
 
-        st.write("---")
-        st.subheader("Step 3: Assessment Results")
-        st.image(result_map, caption=f"Damage Map Overlay — {mode} model", use_container_width=True)
+# bitemporal tab
+with tab_bi:
+    left_col, right_col = st.columns([1, 1], gap="large")
 
-        # Damage statistics
-        st.write("---")
-        st.subheader("Damage Statistics")
+    with left_col:
+        st.subheader("Upload Imagery")
+        st.caption("Upload a matching pre and post-disaster image pair.")
 
-        total_pixels = mask.size
-        class_names  = {0: "Background", 1: "Intact", 2: "Damaged", 3: "Destroyed"}
-        class_colors = {1: "🟩", 2: "🟨", 3: "🟥"}
+        col_pre, col_post = st.columns(2)
+        with col_pre:
+            st.write("**Pre-Event**")
+            pre_file = st.file_uploader(
+                "Drag & Drop Pre-Event",
+                type=["png", "jpg", "jpeg", "tif", "tiff"],
+                key="pre_bi"
+            )
+            if pre_file is not None:
+                pre_img_preview = load_image_from_bytes(pre_file.getvalue(), pre_file.name)
+                st.image(pre_img_preview, caption=pre_file.name, use_container_width=True)
 
-        cols = st.columns(3)
-        for i, (class_idx, name) in enumerate([(1, "Intact"), (2, "Damaged"), (3, "Destroyed")]):
-            count      = int((mask == class_idx).sum())
-            percentage = (count / total_pixels) * 100
-            with cols[i]:
-                st.metric(
-                    label=f"{class_colors[class_idx]} {name}",
-                    value=f"{percentage:.1f}%",
-                )
+        with col_post:
+            st.write("**Post-Event**")
+            post_file_bi = st.file_uploader(
+                "Drag & Drop Post-Event",
+                type=["png", "jpg", "jpeg", "tif", "tiff"],
+                key="post_bi"
+            )
+            if post_file_bi is not None:
+                post_img_preview_bi = load_image_from_bytes(post_file_bi.getvalue(), post_file_bi.name)
+                st.image(post_img_preview_bi, caption=post_file_bi.name, use_container_width=True)
 
-        st.markdown(
-            "**Map Legend:** 🟩 **Intact** &nbsp;&nbsp; 🟨 **Damaged** &nbsp;&nbsp; 🟥 **Destroyed**"
+        bi_ready = pre_file is not None and post_file_bi is not None
+
+        run_bi = st.button(
+            "🚀 GENERATE COLOUR-GRADED MAP",
+            use_container_width=True,
+            key="run_bi",
+            disabled=not bi_ready
         )
 
-        st.download_button(
-            label=" Download Map (.png)",
-            data=buf.getvalue(),
-            file_name="damage_map.png",
-            mime="image/png",
-        )
-else:
-    st.info(missing_msg)
+    with right_col:            
+        st.subheader("Assessment Results")
+
+        if run_bi and bi_ready:
+            progress = st.progress(0, text="Loading images...")
+            post_img = load_image_from_bytes(post_file_bi.getvalue(), post_file_bi.name)
+            pre_img  = load_image_from_bytes(pre_file.getvalue(), pre_file.name)
+            progress.progress(33, text="Running model...")
+            mask, mode = assessor.predict(post_img, pre_img)
+            progress.progress(66, text="Generating damage map...")
+            result_map = overlay_mask(post_img, mask)
+            progress.progress(100, text="Complete!")
+            progress.empty()
+            st.session_state["bi_result"] = {
+                "name":       post_file_bi.name,
+                "post_img":   post_img,
+                "result_map": result_map,
+                "mask":       mask,
+                "mode":       mode
+            }
+
+        if "bi_result" in st.session_state:
+            render_result(st.session_state["bi_result"])
+        else:
+            render_placeholder()
