@@ -13,6 +13,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
 
 from app.inference import DamageAssessor, find_best_checkpoint
+from app.llm_feedback import compute_damage_stats, stream_damage_feedback
 
 st.set_page_config(
     page_title="ImpactVision",
@@ -231,11 +232,41 @@ def render_result(result):
         unsafe_allow_html=True,
     )
     render_statistics(result["mask"], result["mode"])
+
+    # AI interpretation layer: turn the model's per-class stats into a
+    # disaster-response narrative via the local LLM. Gated behind a button and
+    # cached per-result so it isn't re-run on every Streamlit rerun.
+    st.markdown("---")
+    ai_key = f"ai_{result['name']}"
+    if st.button(
+        "Generate AI Assessment",
+        key=f"ai_btn_{result['name']}",
+        use_container_width=True,
+    ):
+        stats = compute_damage_stats(result["mask"])
+        image = result["result_map"]
+        # Release the CNN's reserved-but-unused VRAM so Ollama can load the LLM
+        # onto the GPU with maximum headroom.
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        try:
+            st.session_state[ai_key] = st.write_stream(
+                stream_damage_feedback(stats, result["mode"], image=image)
+            )
+        except Exception as e:  # missing model / Ollama not running / etc.
+            st.error(str(e))
+    elif ai_key in st.session_state:
+        st.markdown(st.session_state[ai_key])
+
     buf = io.BytesIO()
     result["result_map"].save(buf, format="PNG")
     buf.seek(0)
     st.download_button(
-        label="📥 Download Damage Map",
+        label="Download Damage Map",
         data=buf.getvalue(),
         file_name=f"damage_map_{result['name']}",
         mime="image/png",
@@ -270,7 +301,7 @@ with tab_post:
             st.image(post_img_preview, caption=post_file.name, use_container_width=True)
 
         run_post = st.button(
-            "🚀 GENERATE COLOUR-GRADED MAP",
+            "GENERATE COLOUR-GRADED MAP",
             use_container_width=True,
             key="run_post",
             disabled=post_file is None
@@ -335,7 +366,7 @@ with tab_bi:
         bi_ready = pre_file is not None and post_file_bi is not None
 
         run_bi = st.button(
-            "🚀 GENERATE COLOUR-GRADED MAP",
+            " GENERATE COLOUR-GRADED MAP",
             use_container_width=True,
             key="run_bi",
             disabled=not bi_ready

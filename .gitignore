@@ -2,6 +2,8 @@
 /data
 **pycache**
 **pth**
+.claude
+.env
 
 # ignore the checkpoints
 /checkpoints
