@@ -288,9 +288,9 @@ def render_result(result):
     st.download_button(
         label="Download Damage Map",
         data=buf.getvalue(),
-        file_name=f"damage_map_{result['name']}",
+        file_name=f"damage_map_{result['mode']}_{result['name']}",
         mime="image/png",
-        key=f"dl_{result['name']}"
+        key=f"dl_{result['mode']}_{result['name']}"
     )
 
 
