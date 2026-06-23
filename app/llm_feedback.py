@@ -1,5 +1,5 @@
 """
-LLM interpretation layer over the damage-segmentation output (local, via Ollama).
+LLM interpretation layer over the damage-segmentation output (via Ollama).
 
 The SegFormer/MiT + DeepLabV3+ model is the *perception* system: it decides,
 per pixel, whether a building is Intact / Damaged / Destroyed. This module is
@@ -7,17 +7,8 @@ the *interpretation* layer: it takes the model's structured output (the per-clas
 statistics, and optionally the colour-graded overlay) and asks a local Gemma
 model, served by Ollama, to turn it into a concise disaster-response assessment.
 
-The LLM is deliberately **not** asked to re-segment or re-judge damage from raw
-pixels — the CNN already did that, and far more reliably. The class percentages
-are treated as ground truth; the LLM's job is to contextualise and explain them.
-
-Requires:
-  pip install ollama
-  Ollama running locally:  ollama serve
-  The model pulled:        ollama pull gemma4
-
 Config (optional env vars):
-  OLLAMA_MODEL  model tag to use (default: gemma4 — must match what you pulled)
+  OLLAMA_MODEL  model tag to use 
   OLLAMA_HOST   server URL (default: http://localhost:11434)
 """
 
