@@ -14,8 +14,13 @@ Config (optional env vars):
 
 from __future__ import annotations
 import base64
+import codecs
 import io
+import json
 import os
+import subprocess
+import sys
+import tempfile
 from typing import Dict, Iterator, List, Optional
 
 import numpy as np
@@ -127,31 +132,75 @@ def _client():
     return ollama.Client(host=host) if host else ollama.Client()
 
 
+def _worker_stream(stats: Dict[str, float], mode: str, image: Optional[Image.Image]) -> Iterator[str]:
+    """The actual in-process Ollama call. Runs only inside the isolated worker."""
+    client = _client()
+    stream = client.chat(
+        model=MODEL,
+        messages=_build_messages(stats, mode, image),
+        stream=True,
+    )
+    for chunk in stream:
+        piece = chunk["message"]["content"]
+        if piece:
+            yield piece
+
+
 def stream_damage_feedback(
     stats: Dict[str, float],
     mode: str,
     image: Optional[Image.Image] = None,
 ) -> Iterator[str]:
     """
-    Stream the local model's assessment as text chunks
+    Stream the local model's assessment as text chunks.
+
+    The Ollama call is run in an **isolated child process** (this same file,
+    executed as ``__main__``), not in-process. The Streamlit process carries
+    PyTorch + GDAL/rasterio + a threaded runtime, and making the LLM call inside
+    it triggers a native COM-layer crash (``combase.dll`` access violation) that
+    cannot be caught in Python. Running it in a clean child process keeps that
+    instability out of the UI: a child failure surfaces here as a normal
+    ``RuntimeError`` instead of killing Streamlit.
     """
-    client = _client()
+    payload: Dict[str, object] = {"mode": mode, "stats": stats}
+    tmp_img: Optional[str] = None
+    if image is not None:
+        fd, tmp_img = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        image.convert("RGB").save(tmp_img, format="PNG")
+        payload["image_path"] = tmp_img
+
+    proc = subprocess.Popen(
+        [sys.executable, "-u", os.path.abspath(__file__)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     try:
-        stream = client.chat(
-            model=MODEL,
-            messages=_build_messages(stats, mode, image),
-            stream=True,
-        )
-        for chunk in stream:
-            piece = chunk["message"]["content"]
-            if piece:
-                yield piece
-    except Exception as e:
-        raise RuntimeError(
-            f"LLM call failed ({type(e).__name__}: {e}). Check that `ollama serve` "
-            f"is running and the model is pulled (`ollama pull {MODEL}`). If it "
-            f"crashes only with vision enabled, the model may not support images."
-        ) from e
+        proc.stdin.write(json.dumps(payload).encode("utf-8"))
+        proc.stdin.close()
+        decoder = codecs.getincrementaldecoder("utf-8")("replace")
+        while True:
+            chunk = proc.stdout.read1(4096)
+            if not chunk:
+                break
+            text = decoder.decode(chunk)
+            if text:
+                yield text
+        proc.wait()
+        if proc.returncode != 0:
+            err = proc.stderr.read().decode("utf-8", "replace").strip()
+            raise RuntimeError(err or f"LLM worker exited with code {proc.returncode}.")
+    finally:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        if tmp_img and os.path.exists(tmp_img):
+            try:
+                os.unlink(tmp_img)
+            except OSError:
+                pass
 
 
 def generate_damage_feedback(
@@ -161,3 +210,30 @@ def generate_damage_feedback(
 ) -> str:
     """Non-streaming convenience wrapper — returns the full assessment string."""
     return "".join(stream_damage_feedback(stats, mode, image))
+
+
+# ---------------------------------------------------------------------------
+# Isolated worker entry point.
+# Run as a child process by `stream_damage_feedback`. Reads a JSON request from
+# stdin ({mode, stats, image_path?}), streams the assessment to stdout as UTF-8
+# bytes, and exits non-zero with a message on stderr if the Ollama call fails.
+# ---------------------------------------------------------------------------
+def _worker_main() -> int:
+    try:
+        req = json.loads(sys.stdin.read())
+        image = Image.open(req["image_path"]) if req.get("image_path") else None
+        out = sys.stdout.buffer
+        for piece in _worker_stream(req["stats"], req["mode"], image):
+            out.write(piece.encode("utf-8"))
+            out.flush()
+        return 0
+    except Exception as e:  # noqa: BLE001 — report any failure to the parent
+        sys.stderr.write(
+            f"LLM call failed ({type(e).__name__}: {e}). Check that `ollama serve` "
+            f"is running and the model is pulled (`ollama pull {MODEL}`)."
+        )
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(_worker_main())
