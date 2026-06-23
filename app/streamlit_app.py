@@ -4,7 +4,8 @@ from PIL import Image
 import io
 import sys
 import os
-import base64
+import uuid
+
 from pathlib import Path
 import rasterio
 import tempfile
@@ -256,10 +257,10 @@ def render_result(result):
     # disaster-response narrative via the local LLM. Gated behind a button and
     # cached per-result so it isn't re-run on every Streamlit rerun.
     st.markdown("---")
-    ai_key = f"ai_{result['name']}"
+    ai_key = f"ai_{result['id']}"
     if st.button(
         "Generate AI Assessment",
-        key=f"ai_btn_{result['name']}",
+        key=f"ai_btn_{result['id']}",
         use_container_width=True,
     ):
         stats = compute_damage_stats(result["mask"])
@@ -384,6 +385,7 @@ with tab_post:
             progress.progress(100, text="Complete!")
             progress.empty()
             st.session_state["post_result"] = {
+                "id":         uuid.uuid4().hex,
                 "name":       preview_name,
                 "post_img":   post_img,
                 "result_map": result_map,
@@ -490,6 +492,7 @@ with tab_bi:
             progress.progress(100, text="Complete!")
             progress.empty()
             st.session_state["bi_result"] = {
+                "id":         uuid.uuid4().hex,
                 "name":       preview_name_bi,
                 "post_img":   post_img,
                 "result_map": result_map,
