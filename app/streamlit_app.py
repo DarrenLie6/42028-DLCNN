@@ -35,6 +35,25 @@ def _find_background() -> Path | None:
             return p
     return None
 
+EXAMPLES_DIR = ROOT_DIR / "app" / "assets" / "examples"
+
+EXAMPLE_SCENES = [
+    {"name": "Hurricane Matthew",      "post": "hurricane-matthew_00000027_post_disaster.png", "pre": "hurricane-matthew_00000027_pre_disaster.png"},
+    {"name": "Joplin Tornado 1",    "post": "joplin-tornado_00000089_post_disaster.png", "pre": "joplin-tornado_00000089_pre_disaster.png"}, #tif
+    {"name": "Joplin Tornado 2", "post": "joplin-tornado_00000127_post_disaster.png", "pre": "joplin-tornado_00000127_pre_disaster.png"}, #tif
+    {"name": "Midwest Flooding",      "post": "midwest-flooding_00000172_post_disaster.png", "pre": "midwest-flooding_00000172_pre_disaster.png"}, #tif
+    {"name": "Palu Tsunami 1",    "post": "palu-tsunami_00000112_post_disaster.png", "pre": "palu-tsunami_00000112_pre_disaster.png"}, #tif
+    {"name": "Palu Tsunami 2",    "post": "palu-tsunami_00000165_post_disaster.png", "pre": "palu-tsunami_00000165_pre_disaster.png"},
+    {"name": "Santa Rosa Wildfire", "post": "santa-rosa-wildfire_00000038_post_disaster.png", "pre": "santa-rosa-wildfire_00000038_pre_disaster.png"},
+    {"name": "Socal Fire 1",      "post": "socal-fire_00001252_post_disaster.png", "pre": "socal-fire_00001252_pre_disaster.png"},
+    {"name": "Socal Fire 2",    "post": "socal-fire_00001236_post_disaster.png", "pre": "socal-fire_00001236_pre_disaster.png"},
+
+]
+
+def load_example_image(filename):
+    path = EXAMPLES_DIR / filename
+    return Image.open(path).convert("RGB")
+
 
 def apply_theme(card_opacity: float = 0.92) -> None:
     # bg = _find_background()
@@ -282,37 +301,82 @@ tab_post, tab_bi = st.tabs(["Post-Only", "Pre + Post (Change Detection)"])
 
 # post only tab
 with tab_post:
+    with st.expander("Try an example scene", expanded=False):
+        st.caption("Click a thumbnail to instantly load a sample disaster scene.")
+        cols = st.columns(len(EXAMPLE_SCENES))
+        selected_example = None
+
+        for i, scene in enumerate(EXAMPLE_SCENES):
+            with cols[i]:
+                thumb = load_example_image(scene["post"])
+                thumb.thumbnail((150, 150))  # small thumbnail, fast to render
+                st.image(thumb, use_container_width=True)
+                if st.button(scene["name"], key=f"example_{i}", use_container_width=True):
+                    selected_example = scene
+
+        if selected_example is not None:
+            st.session_state["post_example"] = selected_example
+            st.session_state.pop("post_result", None)
+    
+    # st.caption("Quick demo: select a sample scene, or upload your own image below.")
+    
+    # example_names = ["None — upload my own"] + [s["name"] for s in EXAMPLE_SCENES]
+    # choice = st.selectbox("Try an example", example_names, key="example_select")
+    
+    # if choice != "None — upload my own":
+    #     selected_example = next(s for s in EXAMPLE_SCENES if s["name"] == choice)
+    #     st.session_state["post_example"] = selected_example
+    # else:
+    #     st.session_state.pop("post_example", None)
+
+    st.write("---")
     st.subheader("Upload Imagery")
-    st.caption("Upload a post-disaster satellite image.")
+    st.caption("Or upload your own post-disaster satellite image.")
+    
     post_file = st.file_uploader(
         "Drag & Drop Post-Event Image",
         type=["png", "jpg", "jpeg", "tif", "tiff"],
         key="post_only"
     )
-
+    
+    # if example clicked, override with example image
+    if selected_example is not None:
+        st.session_state["post_example"] = selected_example
+        st.session_state.pop("post_result", None)  # clear old result
+    
+    use_example = "post_example" in st.session_state and post_file is None
 
     left_col, right_col = st.columns([1, 1], gap="large")
-    
+
     with left_col:
         st.subheader("Image Preview")
 
         if post_file is not None:
             post_img_preview = load_image_from_bytes(post_file.getvalue(), post_file.name)
-            st.image(post_img_preview, caption=post_file.name, use_container_width=True)
+            preview_name = post_file.name
+        elif use_example:
+            post_img_preview = load_example_image(st.session_state["post_example"]["post"])
+            preview_name = st.session_state["post_example"]["name"]
+        else:
+            post_img_preview = None
+            preview_name = None
+
+        if post_img_preview is not None:
+            st.image(post_img_preview, caption=preview_name, use_container_width=True)
 
         run_post = st.button(
-            "GENERATE COLOUR-GRADED MAP",
+            "🚀 GENERATE COLOUR-GRADED MAP",
             use_container_width=True,
             key="run_post",
-            disabled=post_file is None
+            disabled=post_img_preview is None
         )
 
     with right_col:
         st.subheader("Assessment Results")
 
-        if run_post and post_file is not None:
+        if run_post and post_img_preview is not None:
             progress = st.progress(0, text="Loading image...")
-            post_img = load_image_from_bytes(post_file.getvalue(), post_file.name)
+            post_img = post_img_preview
             progress.progress(33, text="Running model...")
             mask, mode = assessor.predict(post_img, pre_img=None)
             progress.progress(66, text="Generating damage map...")
@@ -320,7 +384,7 @@ with tab_post:
             progress.progress(100, text="Complete!")
             progress.empty()
             st.session_state["post_result"] = {
-                "name":       post_file.name,
+                "name":       preview_name,
                 "post_img":   post_img,
                 "result_map": result_map,
                 "mask":       mask,
@@ -334,11 +398,29 @@ with tab_post:
 
 # bitemporal tab
 with tab_bi:
+    with st.expander("Try an example scene", expanded=False):
+        st.caption("Click a thumbnail to instantly load a sample pre/post pair.")
+        cols = st.columns(len(EXAMPLE_SCENES))
+        selected_example_bi = None
+
+        for i, scene in enumerate(EXAMPLE_SCENES):
+            with cols[i]:
+                thumb = load_example_image(scene["post"])
+                thumb.thumbnail((150, 150))
+                st.image(thumb, use_container_width=True)
+                if st.button(scene["name"], key=f"example_bi_{i}", use_container_width=True):
+                    selected_example_bi = scene
+
+        if selected_example_bi is not None:
+            st.session_state["bi_example"] = selected_example_bi
+            st.session_state.pop("bi_result", None)
+
+    st.write("---")
     left_col, right_col = st.columns([1, 1], gap="large")
 
     with left_col:
         st.subheader("Upload Imagery")
-        st.caption("Upload a matching pre and post-disaster image pair.")
+        st.caption("Or upload your own matching pre and post-disaster image pair.")
 
         col_pre, col_post = st.columns(2)
         with col_pre:
@@ -348,9 +430,6 @@ with tab_bi:
                 type=["png", "jpg", "jpeg", "tif", "tiff"],
                 key="pre_bi"
             )
-            if pre_file is not None:
-                pre_img_preview = load_image_from_bytes(pre_file.getvalue(), pre_file.name)
-                st.image(pre_img_preview, caption=pre_file.name, use_container_width=True)
 
         with col_post:
             st.write("**Post-Event**")
@@ -359,26 +438,51 @@ with tab_bi:
                 type=["png", "jpg", "jpeg", "tif", "tiff"],
                 key="post_bi"
             )
-            if post_file_bi is not None:
-                post_img_preview_bi = load_image_from_bytes(post_file_bi.getvalue(), post_file_bi.name)
-                st.image(post_img_preview_bi, caption=post_file_bi.name, use_container_width=True)
 
-        bi_ready = pre_file is not None and post_file_bi is not None
+        # use uploaded files if present, otherwise fall back to selected example
+        use_example_bi = (
+            "bi_example" in st.session_state
+            and pre_file is None
+            and post_file_bi is None
+        )
+
+        if pre_file is not None and post_file_bi is not None:
+            pre_img_preview  = load_image_from_bytes(pre_file.getvalue(), pre_file.name)
+            post_img_preview = load_image_from_bytes(post_file_bi.getvalue(), post_file_bi.name)
+            preview_name_bi  = post_file_bi.name
+        elif use_example_bi:
+            example = st.session_state["bi_example"]
+            pre_img_preview  = load_example_image(example["pre"])
+            post_img_preview = load_example_image(example["post"])
+            preview_name_bi  = example["name"]
+        else:
+            pre_img_preview  = None
+            post_img_preview = None
+            preview_name_bi  = None
+
+        if pre_img_preview is not None:
+            with col_pre:
+                st.image(pre_img_preview, caption="Pre-Event", use_container_width=True)
+        if post_img_preview is not None:
+            with col_post:
+                st.image(post_img_preview, caption="Post-Event", use_container_width=True)
+
+        bi_ready = pre_img_preview is not None and post_img_preview is not None
 
         run_bi = st.button(
-            " GENERATE COLOUR-GRADED MAP",
+            "🚀 GENERATE COLOUR-GRADED MAP",
             use_container_width=True,
             key="run_bi",
             disabled=not bi_ready
         )
 
-    with right_col:            
+    with right_col:
         st.subheader("Assessment Results")
 
         if run_bi and bi_ready:
             progress = st.progress(0, text="Loading images...")
-            post_img = load_image_from_bytes(post_file_bi.getvalue(), post_file_bi.name)
-            pre_img  = load_image_from_bytes(pre_file.getvalue(), pre_file.name)
+            post_img = post_img_preview
+            pre_img  = pre_img_preview
             progress.progress(33, text="Running model...")
             mask, mode = assessor.predict(post_img, pre_img)
             progress.progress(66, text="Generating damage map...")
@@ -386,7 +490,7 @@ with tab_bi:
             progress.progress(100, text="Complete!")
             progress.empty()
             st.session_state["bi_result"] = {
-                "name":       post_file_bi.name,
+                "name":       preview_name_bi,
                 "post_img":   post_img,
                 "result_map": result_map,
                 "mask":       mask,
