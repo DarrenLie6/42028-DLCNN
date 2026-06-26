@@ -1,33 +1,14 @@
 """
 Transformer-based DeepLabV3+ for xView2 building-damage semantic segmentation.
 
-This is a *separate* model from the ResNet-50 DeepLabV3 baseline in
-`deeplabv3.py`. The baseline is left untouched so it can still be used if it
-performs well; this file provides an alternative, stronger architecture.
+Architecture -
 
-Why a transformer for this task
---------------------------------
-Building-damage segmentation needs **global context** (e.g. a collapsed roof is
-only "destroyed" relative to surrounding intact structures and the disaster
-footprint) together with **fine boundaries**. A pure CNN like ResNet has a
-limited effective receptive field; a hierarchical vision transformer captures
-long-range dependencies natively while still producing multi-scale features.
-
-Architecture
-------------
 Encoder : MiT (Mix Vision Transformer, the SegFormer backbone) — a hierarchical
           transformer with efficient (spatially-reduced) self-attention and a
           convolutional Mix-FFN. Produces 4 feature maps at strides 4/8/16/32.
 Decoder : The classic DeepLabV3+ decoder — ASPP on the deepest (stride-32)
           features for multi-scale context, fused with low-level (stride-4)
           features for sharp boundaries.
-
-The forward pass returns ``{"out": logits, "aux": aux_logits}`` so it is a
-drop-in replacement for the baseline and trains with the existing
-`SemanticSegmentationTrainer` (which adds 0.4 * aux loss).
-
-Pure PyTorch — no torchvision / timm / transformers dependency, so it runs on
-GPU even with a CPU-only torchvision build.
 """
 
 from __future__ import annotations
@@ -39,9 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# ----------------------------------------------------------------------------
-# Small building blocks
-# ----------------------------------------------------------------------------
+# funtional utils
 def _trunc_normal_(tensor: torch.Tensor, std: float = 0.02) -> torch.Tensor:
     """In-place truncated-normal init (truncate at ±2 std)."""
     return nn.init.trunc_normal_(tensor, mean=0.0, std=std, a=-2 * std, b=2 * std)
@@ -201,7 +180,6 @@ class OverlapPatchEmbed(nn.Module):
 
 
 # MiT (Mix Vision Transformer) encoder
-
 class MiTEncoder(nn.Module):
     """
     Hierarchical transformer encoder producing 4 multi-scale feature maps at
@@ -287,9 +265,7 @@ class MiTEncoder(nn.Module):
         return feats  # strides 4, 8, 16, 32
 
 
-# ----------------------------------------------------------------------------
 # DeepLabV3+ decoder (ASPP + low-level fusion)
-# ----------------------------------------------------------------------------
 class ASPPConv(nn.Sequential):
     def __init__(self, in_ch: int, out_ch: int, dilation: int):
         super().__init__(
@@ -407,12 +383,7 @@ class FCNAuxHead(nn.Sequential):
 class SiameseFusion(nn.Module):
     """
     Fuse pre/post encoder features at one scale into a single feature map.
-
-    Concatenates [pre, post, |pre - post|] and projects back to ``ch`` channels.
-    The absolute difference injects the explicit change signal that defines
-    building damage, while the following BatchNorm bounds activation magnitude
-    for stable gradients. This mirrors the fusion proven on the Siamese
-    Attention U-Net (`siamese_attention_unet.SiameseFusion`).
+    When bitemporal is True this concatanates the both features from the encoder.
     """
 
     def __init__(self, ch: int):
@@ -430,7 +401,6 @@ class SiameseFusion(nn.Module):
 
 
 # Pretrained encoder via timm 
-
 # backbone varients
 DEFAULT_TIMM_BACKBONE = {
     "b0": "pvt_v2_b0",
@@ -441,10 +411,6 @@ DEFAULT_TIMM_BACKBONE = {
 
 class TimmBackboneEncoder(nn.Module):
     """
-    Wraps a timm backbone in ``features_only`` mode so it returns 4 multi-scale
-    feature maps at strides 4/8/16/32 — the same contract as :class:`MiTEncoder`,
-    but with ImageNet-pretrained weights.
-
     The backbone must expose 4 stages at strides 4/8/16/32 (true for the PVTv2 /
     MiT family). Override ``name`` to use any compatible timm backbone, e.g.
     'pvt_v2_b2', 'mit_b1' (if present in your timm version), 'swin_*', etc.
@@ -468,9 +434,6 @@ class TimmBackboneEncoder(nn.Module):
         return list(self.backbone(x))  # 4 maps at strides 4/8/16/32
 
 
-# ----------------------------------------------------------------------------
-# Full model
-# ----------------------------------------------------------------------------
 # Standard MiT (SegFormer) variant configs.
 MIT_CONFIGS = {
     "b0": dict(embed_dims=(32, 64, 160, 256), depths=(2, 2, 2, 2)),
@@ -482,22 +445,6 @@ MIT_CONFIGS = {
 class TransformerDeepLabV3Plus(nn.Module):
     """
     DeepLabV3+ with a Mix-Vision-Transformer (SegFormer) encoder.
-
-    Two input modes:
-      * Single-input (``bitemporal=False``, default): a 3-channel post-disaster
-        image. The original behaviour — left intact so prior runs/checkpoints
-        stay valid.
-      * Bi-temporal (``bitemporal=True``): a 6-channel ``[pre | post]`` image.
-        A single shared encoder (Siamese, weight-tied) encodes pre and post
-        separately; features are fused per scale via :class:`SiameseFusion`
-        ([pre, post, |pre-post|]) before the DeepLabV3+ decoder. This injects
-        the change signal that defines building damage and is the recommended
-        mode for xView2.
-
-    Output: dict with
-        'out' — (B, num_classes, H, W) logits at the input resolution
-        'aux' — (B, num_classes, H, W) auxiliary logits (training-time deep
-                supervision; the trainer adds 0.4 * aux loss)
     """
 
     def __init__(
