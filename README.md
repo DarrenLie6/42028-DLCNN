@@ -1,4 +1,4 @@
-# ImpactVision — AI-Powered Satellite Building-Damage Assessment
+# ImpactVision - AI-Powered Satellite Building-Damage Assessment
 
 <p align="center">
   <img src="app/assets/banner.png" alt="ImpactVision — from satellite imagery to damage maps in minutes" width="820">
@@ -19,7 +19,7 @@
 
 ## Overview
 
-ImpactVision is a deep-learning application for automated **building-damage assessment** from satellite imagery (xView2 / xBD). It segments every pixel into one of four classes and renders a colour-graded damage map, then an optional **local LLM** turns the result into a short, disaster-response-oriented written assessment.
+ImpactVision is a deep-learning application for automated **building-damage assessment** from satellite imagery. It segments every pixel into one of four classes and renders a colour-graded damage map, then an optional **local LLM** turns the result into a short, disaster-response-oriented written assessment.
 
 **Classes:** `0 Background` · `1 Intact` · `2 Damaged` · `3 Destroyed`
 
@@ -51,30 +51,6 @@ The model is a **transformer-based DeepLabV3+**: a SegFormer-style **MiT / PVTv2
 
 A lightweight auxiliary head provides deep supervision during training only and is unused at inference.
 
-## Project Structure
-
-```
-project_root/
-│
-├── app/
-│   ├── streamlit_app.py        # Streamlit UI (Post-Only and Pre+Post tabs)
-│   ├── inference.py            # checkpoint loading + prediction router
-│   ├── llm_feedback.py         # local-LLM (Ollama) assessment layer
-│   └── assets/examples/        # bundled example pre/post scenes
-│
-├── checkpoints/
-│   ├── semantic_seg_transformer/        # bi-temporal (Siamese) weights  (*.pth)
-│   └── semantic_seg_transformer_post/   # post-only weights              (*.pth)
-│
-├── src/
-│   ├── data/                   # datasets / loaders
-│   ├── models/
-│   │   └── deeplabv3/
-│   │       └── deeplabv3plus_transformer.py   # the model definition
-│   └── training/               # trainers / losses / metrics
-│
-├── requirements.txt
-└── README.md
 ```
 
 ## Model Checkpoints
@@ -86,7 +62,7 @@ checkpoints/semantic_seg_transformer/        <-  bi-temporal checkpoint(s)
 checkpoints/semantic_seg_transformer_post/   <-  post-only checkpoint(s)
 ```
 
-The bi-temporal vs post-only architecture is auto-detected from each checkpoint (a bi-temporal checkpoint contains `fusions.*` keys), so the correct model is rebuilt automatically — no config flag to keep in sync.
+The bi-temporal vs post-only architecture is auto-detected from each checkpoint (a bi-temporal checkpoint contains `fusions.*` keys), so the correct model is rebuilt automatically no config flag to keep in sync.
 
 ## Dependencies
 
@@ -96,10 +72,6 @@ Install the core dependencies from the project root:
 pip install -r requirements.txt
 pip install streamlit ollama        # if not already present
 ```
-
-Key libraries: `torch`, `torchvision`, `timm` (pretrained encoder), `rasterio` (GeoTIFF), `streamlit` (UI), and `ollama` (LLM assessment, optional).
-
-> The first run downloads the ImageNet-pretrained encoder weights via `timm`, so an internet connection is needed once.
 
 ## Running the Application
 
@@ -127,7 +99,7 @@ Streamlit prints a local URL (e.g. `http://localhost:8501`). Open it in your bro
 
 ## AI Assessment (Local LLM)
 
-After a damage map is generated, click **Generate AI Assessment** to get a concise, written disaster-response summary (severity, key observations, recommended response priorities, caveats). The model's per-class statistics — and the colour-graded damage map image — are sent to a **local LLM served by [Ollama](https://ollama.com)**; the CNN remains the source of truth for *what* is damaged, and the LLM only interprets and explains the result.
+After a damage map is generated, click **Generate AI Assessment** to get a concise, written disaster-response summary (severity, key observations, recommended response priorities, caveats). The model's per-class statistics and the colour-graded damage map image are sent to a **local LLM served by [Ollama](https://ollama.com)**; the CNN remains the source of truth for *what* is damaged, and the LLM only interprets and explains the result.
 
 Setup:
 
@@ -150,5 +122,5 @@ streamlit run app/streamlit_app.py
 ```
 
 Notes:
-- This feature is **optional** — the rest of the app works without Ollama. If the server isn't running or the model isn't pulled, the assessment shows a clean error instead of failing the app.
+- This feature is **optional** the rest of the app works without Ollama. If the server isn't running or the model isn't pulled, the assessment shows a clean error instead of failing the app.
 - **VRAM:** the segmentation model and the LLM share the GPU. A large model (e.g. a ~10 GB tag) will not fit on an 8 GB GPU alongside the CNN; choose a model that fits, or let Ollama run it on CPU.
