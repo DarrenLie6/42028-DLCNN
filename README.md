@@ -1,5 +1,22 @@
 # ImpactVision — AI-Powered Satellite Building-Damage Assessment
 
+<p align="center">
+  <img src="app/assets/banner.png" alt="ImpactVision — from satellite imagery to damage maps in minutes" width="820">
+</p>
+
+<table>
+<tr>
+<td width="50%" valign="top" align="center">
+  <img src="app/assets/overview.jpeg" alt="ImpactVision running in the browser: a post-disaster satellite scene rendered as a colour-graded damage map" width="100%"><br>
+  <em>The Streamlit app after a post-only assessment — buildings colour-graded by damage class.</em>
+</td>
+<td width="50%" valign="top" align="center">
+  <img src="app/assets/techfest-booth.jpeg" alt="The ImpactVision demo booth at UTS Tech Fest 2026, showing model benchmarks on the display and a live pre/post assessment on the laptop" width="100%"><br>
+  <em>Demoed at UTS Tech Fest 2026 — live bi-temporal assessment alongside model benchmarks.</em>
+</td>
+</tr>
+</table>
+
 ## Overview
 
 ImpactVision is a deep-learning application for automated **building-damage assessment** from satellite imagery (xView2 / xBD). It segments every pixel into one of four classes and renders a colour-graded damage map, then an optional **local LLM** turns the result into a short, disaster-response-oriented written assessment.
