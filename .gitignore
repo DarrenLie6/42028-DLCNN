@@ -4,6 +4,7 @@
 **pth**
 .claude
 .env
+.vscode
 
 # ignore the checkpoints
 /checkpoints
